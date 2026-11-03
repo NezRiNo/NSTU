@@ -102,6 +102,18 @@ aside{flex-direction:row;overflow-x:auto;padding-bottom:4px;align-items:center}
 .stats{grid-template-columns:repeat(2,1fr)}
 .r2{grid-template-columns:1fr}}
 .adm{display:none!important}body.admin .adm{display:inline-block!important}body:not(.admin) .tb{cursor:default}
+.srow{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.srow input{flex:1;min-width:200px;max-width:440px;padding-left:36px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238a8f98' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l4 4'/%3E%3C/svg%3E") no-repeat 11px center}
+#dSub{width:min(680px,94vw)}
+.les{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px;padding:7px 0;border-top:1px dashed var(--line)}
+.ltype{font-weight:600}
+.lrow{border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px;background:var(--bg)}
+.lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.book{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);border-left:5px solid var(--c)}
+.pdf{width:42px;height:50px;border-radius:8px;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.bact{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sw{gap:8px;align-items:center}.cp{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:3px 10px 3px 3px;cursor:pointer}.cp.on{border-color:var(--ink);color:var(--ink)}.cp input{width:28px;height:28px;padding:0;border:0;border-radius:8px;background:none;cursor:pointer}
+a.btn{text-decoration:none;display:inline-block}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -115,27 +127,29 @@ aside{flex-direction:row;overflow-x:auto;padding-bottom:4px;align-items:center}
     <button class="btn pri adm" data-a="newTask">Новое задание</button>
   </div>
 </header>
+<div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="books" id="tabB">Литература</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
 <aside id="nav"></aside>
 <main id="main"></main>
 </div>
 
 <dialog id="dTask"><div class="dh" id="dTaskH"></div><div class="db" id="dTaskB"></div><div class="df" id="dTaskF"></div></dialog>
 <dialog id="dSub"><div class="dh" id="dSubH"></div><div class="db" id="dSubB"></div><div class="df" id="dSubF"></div></dialog>
+<dialog id="dBook"><div class="dh" id="dBookH"></div><div class="db" id="dBookB"></div><div class="df" id="dBookF"></div></dialog>
 <dialog id="dData"><div class="dh">Вход для администратора</div><div class="db"><label>Почта<input id="aEmail" type="email" autocomplete="username"></label><label>Пароль<input id="aPass" type="password" autocomplete="current-password"></label><div id="aErr" style="color:var(--bad);font-size:14px"></div></div><div class="df"><button class="btn" data-a="close" data-t="dData">Отмена</button><button class="btn pri" data-a="login">Войти</button></div></dialog>
 <dialog id="lb"><img id="lbi" alt="Вложение"><button class="btn" data-a="close" data-t="lb">Закрыть</button></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0/dist/umd/supabase.js"></script>
 <script>
 (function(){
-var COLORS=['#c8102e','#1f8a4c','#2b2f36','#e0701a','#7a1f3d','#6aa84f','#16798a','#8a8f98'];
+var COLORS=['#c8102e','#e0457b','#d6492b','#e0701a','#e0a81e','#a3b81f','#6aa84f','#1f8a4c','#16a085','#16798a','#1e88e5','#3d4ee0','#5b3fd1','#8a4fe0','#b03fb5','#7a1f3d','#6d4c41','#2b2f36','#6b7a8f','#9aa3ad'];
 var SB_URL='https://pvmzyispfthecczgnntb.supabase.co';
 var SB_KEY='sb_publishable_e5D6HGi0xMIBgZ0z2hM3mg_BsJYJTrm';
 var sb=(SB_URL.indexOf('YOUR-')<0&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
 var ADMIN=false,LOADING=true,LOADERR='',DONE={};
 try{DONE=JSON.parse(localStorage.getItem('uchyoba-done')||'{}')}catch(e){}
 function saveDone(){try{localStorage.setItem('uchyoba-done',JSON.stringify(DONE))}catch(e){}}
-var S={subjects:[],tasks:[]};
-var ui={sub:'all',flt:'active',editT:null,editS:null};
+var S={subjects:[],tasks:[],books:[]};
+var ui={sub:'all',flt:'active',tab:'tasks',q:'',editT:null,editS:null,editB:null};
 var $=function(i){return document.getElementById(i)};
 function uid(){return Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -143,11 +157,13 @@ async function load(){
   if(!sb){LOADING=false;return}
   var a=await sb.from('subjects').select('*').order('created_at');
   var b=await sb.from('tasks').select('*');
+  var c=await sb.from('books').select('*').order('created_at',{ascending:false});
   LOADING=false;
-  if(a.error||b.error){LOADERR=(a.error||b.error).message;return}
+  if(a.error||b.error||c.error){LOADERR=(a.error||b.error||c.error).message;return}
   LOADERR='';
-  S.subjects=a.data.map(function(r){return {id:r.id,name:r.name,color:r.color,teacher:r.teacher,room:r.room,schedule:r.schedule,control:r.control,notes:r.notes}});
+  S.subjects=a.data.map(function(r){return {id:r.id,name:r.name,color:r.color,control:r.control,notes:r.notes,lessons:r.lessons||[]}});
   S.tasks=b.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,done:!!DONE[r.id],files:r.files||[]}});
+  S.books=c.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,author:r.author,kind:r.kind,file:r.file||{}}});
 }
 function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},3200)}
 function pl(n,f){var a=Math.abs(n)%100,b=a%10;return n+' '+(a>10&&a<20?f[2]:b>1&&b<5?f[1]:b==1?f[0]:f[2])}
@@ -171,14 +187,15 @@ var GN=['Просрочено','Сегодня','Завтра','На этой н
 
 function render(){
   $('today').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
-  renderNav();renderMain();
+  syncTabs();renderNav();renderMain();
 }
 function openCnt(id){return S.tasks.filter(function(t){return !t.done&&(id==='all'||t.sid===id)})}
+function navCnt(id){return ui.tab==='books'?S.books.filter(function(b){return id==='all'||b.sid===id}).length:openCnt(id).length}
 function renderNav(){
   var od=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)<new Date()}).length;
-  var h='<button class="nav'+(ui.sub==='all'?' on':'')+'" data-a="sub" data-id="all"><span class="dot" style="background:var(--ink)"></span><span class="nm">Все дисциплины</span>'+(od?'<span class="cnt bad" title="Просрочено">'+od+'</span>':'<span class="cnt">'+openCnt('all').length+'</span>')+'</button>';
+  var h='<button class="nav'+(ui.sub==='all'?' on':'')+'" data-a="sub" data-id="all"><span class="dot" style="background:var(--ink)"></span><span class="nm">Все дисциплины</span>'+(od&&ui.tab==='tasks'?'<span class="cnt bad" title="Просрочено">'+od+'</span>':'<span class="cnt">'+navCnt('all')+'</span>')+'</button>';
   S.subjects.forEach(function(s){
-    h+='<button class="nav'+(ui.sub===s.id?' on':'')+'" data-a="sub" data-id="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span><span class="cnt">'+openCnt(s.id).length+'</span></button>';
+    h+='<button class="nav'+(ui.sub===s.id?' on':'')+'" data-a="sub" data-id="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span><span class="cnt">'+navCnt(s.id)+'</span></button>';
   });
   h+='<button class="btn adm" data-a="newSub" style="margin-top:6px;flex:none">Добавить дисциплину</button>';
   $('nav').innerHTML=h;
@@ -189,9 +206,11 @@ function renderMain(){
   if(!sb){$('main').innerHTML='<div class="empty"><b>Сайт ещё не подключён к базе</b>Впишите SB_URL и SB_KEY в index.html (см. README).</div>';return}
   if(LOADING){$('main').innerHTML='<div class="empty"><b>Загрузка…</b></div>';return}
   if(LOADERR){$('main').innerHTML='<div class="empty"><b>Не удалось загрузить данные</b>'+esc(LOADERR)+'</div>';return}
+  if(ui.tab==='books'){renderBooks();return}
   if(!S.subjects.length){
     $('main').innerHTML='<div class="empty"><b>Пока нет дисциплин</b>'+(ADMIN?'Добавьте первую дисциплину, затем задания с дедлайнами и фото.<div style="margin-top:14px"><button class="btn pri" data-a="newSub">Добавить дисциплину</button></div>':'Информации пока нет. Загляните позже.')+'</div>';return;
   }
+  if(ui.q.trim()){renderSearch();return}
   var all=S.tasks.filter(function(t){return !cur||t.sid===cur.id});
   var open=all.filter(function(t){return !t.done}),done=all.length-open.length;
   var over=open.filter(function(t){return t.due&&new Date(t.due)<new Date()}).length;
@@ -199,7 +218,7 @@ function renderMain(){
   var pc=all.length?Math.round(done/all.length*100):0;
   if(cur){
     h+='<div class="info" style="--c:'+cur.color+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><h2>'+esc(cur.name)+'</h2><button class="btn sm adm" data-a="editSub" data-id="'+cur.id+'">Изменить</button></div><div class="kv">'+
-    kv('Преподаватель',cur.teacher)+kv('Аудитория',cur.room)+kv('Расписание',cur.schedule)+kv('Контроль',cur.control)+'</div>'+(cur.notes?'<div class="notes">'+esc(cur.notes)+'</div>':'')+'</div>';
+    kv('Контроль',cur.control)+'</div>'+lessonsH(cur)+(cur.notes?'<div class="notes">'+esc(cur.notes)+'</div>':'')+'</div>';
   }
   h+='<div class="stats"><div class="stat"><b>'+open.length+'</b><span>Активных заданий</span></div><div class="stat"><b style="color:'+(over?'var(--bad)':'inherit')+'">'+over+'</b><span>Просрочено</span></div><div class="stat"><b>'+wk+'</b><span>На ближайшие 7 дней</span></div><div class="stat"><b>'+pc+'%</b><span>Выполнено</span><div class="bar"><i style="width:'+pc+'%"></i></div></div></div>';
   h+='<div class="tools"><div class="seg">'+[['active','Активные'],['done','Выполненные'],['all','Все']].map(function(f){return '<button class="'+(ui.flt===f[0]?'on':'')+'" data-a="flt" data-id="'+f[0]+'">'+f[1]+'</button>'}).join('')+'</div><span class="sp"></span><button class="btn pri adm" data-a="newTask">Добавить задание</button></div>';
@@ -227,6 +246,100 @@ function taskH(t,di){
   });
   return '<div class="task'+(t.done?' done':'')+'" style="--c:'+s.color+'"><button class="chk" data-a="toggle" data-id="'+t.id+'" aria-label="Отметить выполненным">'+(t.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3 3 7-7" stroke="#fff" stroke-width="2" fill="none"/></svg>':'')+'</button>'+
   '<div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="tt">'+esc(t.title)+'</div><div class="meta"><span class="chip">'+esc(s.name)+'</span><span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div>';
+}
+
+/* ---------- занятия, поиск, литература ---------- */
+var DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],DAYF=['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+var TYPES=['Лекция','Практика','Лабораторная','Семинар','Консультация','Другое'];
+var WEEKS={all:'Каждая неделя',odd:'Нечётная',even:'Чётная'};
+var les=[],bookFile=null;
+function lessonsH(s){
+  var L=(s.lessons||[]).slice().sort(function(a,b){return (a.day-b.day)||String(a.from).localeCompare(String(b.from))});
+  if(!L.length)return '';
+  return '<div style="margin-top:10px">'+L.map(function(l){
+    return '<div class="les"><span class="ltype">'+esc(l.type)+'</span><span>'+DAYS[l.day]+' '+esc(l.from)+(l.to?'–'+esc(l.to):'')+'</span>'+(l.week&&l.week!=='all'?'<span class="chip" style="--c:var(--acc)">'+WEEKS[l.week]+' неделя</span>':'')+(l.teacher?'<span>'+esc(l.teacher)+'</span>':'')+(l.room?'<span>ауд. '+esc(l.room)+'</span>':'')+'</div>';
+  }).join('')+'</div>';
+}
+function hs(s){return (s.name+' '+(s.control||'')+' '+(s.notes||'')+' '+(s.lessons||[]).map(function(l){return l.type+' '+l.teacher+' '+l.room}).join(' ')).toLowerCase()}
+function mb(n){return (n/1048576).toFixed(1).replace('.',',')+' МБ'}
+function syncTabs(){
+  $('tabT').className=ui.tab==='tasks'?'on':'';$('tabB').className=ui.tab==='books'?'on':'';
+  $('q').placeholder=ui.tab==='books'?'Поиск по литературе: название, автор, дисциплина':'Поиск по заданиям и дисциплинам';
+}
+function bookMatch(b,q){var s=subj(b.sid);return (b.title+' '+b.author+' '+b.kind+' '+(s?s.name:'')).toLowerCase().indexOf(q)>=0}
+function renderSearch(){
+  var q=ui.q.toLowerCase().trim(),h='';
+  var subs=S.subjects.filter(function(s){return hs(s).indexOf(q)>=0});
+  var ts=S.tasks.filter(function(t){var s=subj(t.sid);return (t.title+' '+t.desc+' '+(s?hs(s):'')).toLowerCase().indexOf(q)>=0});
+  ts.sort(function(a,b){return (a.done-b.done)||((a.due?new Date(a.due):8.6e15)-(b.due?new Date(b.due):8.6e15))});
+  var bs=S.books.filter(function(b){return bookMatch(b,q)});
+  if(subs.length){h+='<div class="grp">Дисциплины</div>'+subs.map(function(s){return '<button class="nav" style="background:var(--card);border-color:var(--line);margin-bottom:6px" data-a="sub" data-id="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span></button>'}).join('')}
+  if(ts.length){h+='<div class="grp">Задания</div>'+ts.map(function(t){return taskH(t,dueInfo(t))}).join('')}
+  if(bs.length){h+='<div class="grp">Литература</div>'+bs.map(bookH).join('')}
+  if(!h)h='<div class="empty"><b>Ничего не найдено</b>Попробуйте другое слово: название задания, дисциплины или фамилию преподавателя.</div>';
+  $('main').innerHTML=h;
+}
+function bookH(b){
+  var s=subj(b.sid),f=b.file||{};
+  return '<div class="book" style="--c:'+(s?s.color:'#8a8f98')+'"><div class="pdf">PDF</div><div class="tb" style="cursor:default"><div class="tt">'+esc(b.title)+'</div><div class="meta">'+(b.author?'<span>'+esc(b.author)+'</span>':'')+'<span class="pr">'+esc(b.kind)+'</span><span class="chip" style="--c:'+(s?s.color:'#8a8f98')+'">'+esc(s?s.name:'Общая')+'</span>'+(f.size?'<span>'+mb(f.size)+'</span>':'')+'</div></div><div class="bact"><a class="btn sm" href="'+esc(f.d)+'" target="_blank" rel="noopener">Открыть</a><a class="btn sm" href="'+esc(f.d)+'?download='+encodeURIComponent(f.n||'book.pdf')+'">Скачать</a><button class="btn sm adm" data-a="editBook" data-id="'+b.id+'">Изменить</button></div></div>';
+}
+function renderBooks(){
+  var cur=ui.sub==='all'?null:subj(ui.sub),q=ui.q.toLowerCase().trim();
+  var list=S.books.filter(function(b){return (!cur||b.sid===cur.id)&&(!q||bookMatch(b,q))});
+  var h='<div class="tools"><b>'+(cur?esc(cur.name):'Вся литература')+'</b><span class="sub">'+list.length+' шт.</span><span class="sp"></span><button class="btn pri adm" data-a="newBook">Добавить книгу</button></div>';
+  h+=list.length?list.map(bookH).join(''):'<div class="empty"><b>'+(q?'Ничего не найдено':'Литературы пока нет')+'</b>'+(q?'Попробуйте другое слово.':'Здесь будут учебники и методички в PDF.')+'</div>';
+  $('main').innerHTML=h;
+}
+function openBook(id){
+  var b=id?S.books.find(function(x){return x.id===id}):null;
+  ui.editB=b?b.id:null;bookFile=b?b.file:null;armed=false;
+  $('dBookH').textContent=b?'Редактировать книгу':'Новая книга';
+  var kinds=['Учебник','Учебное пособие','Методичка','Конспект','Задачник','Другое'];
+  $('dBookB').innerHTML='<label>Название<input id="bTitle" placeholder="Например, Сборник задач по математическому анализу" value="'+esc(b?b.title:'')+'"></label><label>Автор<input id="bAuthor" value="'+esc(b?b.author:'')+'"></label>'+
+  '<div class="r2"><label>Тип<select id="bKind">'+kinds.map(function(k){return '<option'+(b&&b.kind===k?' selected':'')+'>'+k+'</option>'}).join('')+'</select></label><label>Дисциплина<select id="bSub"><option value="">Общая (без дисциплины)</option>'+S.subjects.map(function(s){return '<option value="'+s.id+'"'+((b?b.sid:(ui.sub!=='all'?ui.sub:''))===s.id?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></label></div>'+
+  '<div><div class="drop" id="bDrop" data-a="pickBook"></div><input type="file" id="bFile" accept="application/pdf,.pdf" hidden></div>';
+  drawBookFile();
+  $('dBookF').innerHTML=(b?'<button class="btn dng" data-a="delBook" style="margin-right:auto">Удалить</button>':'')+'<button class="btn" data-a="close" data-t="dBook">Отмена</button><button class="btn pri" data-a="saveBook">Сохранить</button>';
+  $('dBook').showModal();
+}
+function drawBookFile(){$('bDrop').textContent=bookFile?('Файл: '+bookFile.n+(bookFile.size?' ('+mb(bookFile.size)+')':'')+'. Нажмите, чтобы заменить'):'Нажмите, чтобы выбрать PDF (до 50 МБ)'}
+async function saveBook(){
+  var title=$('bTitle').value.trim();
+  if(!title){$('bTitle').focus();toast('Введите название');return}
+  if(!bookFile){toast('Выберите PDF-файл');return}
+  var btn=document.querySelector('[data-a="saveBook"]');btn.disabled=true;btn.textContent='Загружаю…';
+  try{
+    var bk=sb.storage.from('homework'),file=bookFile,old=ui.editB?S.books.find(function(x){return x.id===ui.editB}):null;
+    if(bookFile.raw){
+      var p='books/'+uid()+uid()+'.pdf';
+      var up=await bk.upload(p,bookFile.raw,{contentType:'application/pdf',cacheControl:'31536000'});
+      if(up.error)throw up.error;
+      file={n:bookFile.n,t:'application/pdf',size:bookFile.size,d:bk.getPublicUrl(p).data.publicUrl,p:p};
+    }
+    var row={title:title,author:$('bAuthor').value.trim(),kind:$('bKind').value,subject_id:$('bSub').value||null,file:file};
+    var r=ui.editB?await sb.from('books').update(row).eq('id',ui.editB):await sb.from('books').insert(row);
+    if(r.error)throw r.error;
+    if(old&&old.file&&old.file.p&&old.file.p!==file.p)await bk.remove([old.file.p]);
+    $('dBook').close();await load();render();toast('Сохранено');
+  }catch(e){toast('Ошибка: '+(e.message||e))}
+  btn.disabled=false;btn.textContent='Сохранить';
+}
+async function delBook(el){
+  if(!armed){armed=true;el.textContent='Точно удалить?';return}
+  armed=false;
+  try{
+    var b=S.books.find(function(x){return x.id===ui.editB});
+    var r=await sb.from('books').delete().eq('id',ui.editB);if(r.error)throw r.error;
+    if(b&&b.file&&b.file.p)await sb.storage.from('homework').remove([b.file.p]);
+    $('dBook').close();await load();render();
+  }catch(e){toast('Ошибка: '+(e.message||e))}
+}
+function drawLes(){
+  $('lesL').innerHTML=les.length?les.map(function(l,i){
+    var d=' data-i="'+i+'"';
+    return '<div class="lrow"><div class="lg"><label>Тип<select data-l="type"'+d+'>'+TYPES.map(function(t){return '<option'+(t===l.type?' selected':'')+'>'+t+'</option>'}).join('')+'</select></label><label>День<select data-l="day"'+d+'>'+DAYF.map(function(n,k){return '<option value="'+k+'"'+(k==l.day?' selected':'')+'>'+n+'</option>'}).join('')+'</select></label><label>Начало<input type="time" data-l="from"'+d+' value="'+esc(l.from)+'"></label><label>Конец<input type="time" data-l="to"'+d+' value="'+esc(l.to)+'"></label><label>Неделя<select data-l="week"'+d+'>'+Object.keys(WEEKS).map(function(k){return '<option value="'+k+'"'+(k===l.week?' selected':'')+'>'+WEEKS[k]+'</option>'}).join('')+'</select></label></div>'+
+    '<div class="lg" style="grid-template-columns:1fr 1fr"><label>Преподаватель<input data-l="teacher"'+d+' value="'+esc(l.teacher)+'" placeholder="Фамилия И. О."></label><label>Аудитория<input data-l="room"'+d+' value="'+esc(l.room)+'" placeholder="Например, 3-405"></label></div><button class="btn sm dng" data-a="rmLes"'+d+' style="justify-self:end">Убрать занятие</button></div>';
+  }).join(''):'<div class="sub">Занятий пока нет. Добавьте лекцию, практику или лабораторную.</div>';
 }
 
 /* ---------- задания ---------- */
@@ -307,24 +420,24 @@ async function saveTask(){
 /* ---------- дисциплины ---------- */
 var pickC=COLORS[0],armed=false;
 function openSub(id){
-  var s=id?subj(id):null;ui.editS=s?s.id:null;armed=false;
+  var s=id?subj(id):null;ui.editS=s?s.id:null;armed=false;les=s&&s.lessons?JSON.parse(JSON.stringify(s.lessons)):[];
   pickC=s?s.color:COLORS[S.subjects.length%COLORS.length];
   $('dSubH').textContent=s?'Редактировать дисциплину':'Новая дисциплина';
   var v=function(k){return esc(s?s[k]:'')};
   $('dSubB').innerHTML='<label>Название<input id="sName" placeholder="Например, Математический анализ" value="'+v('name')+'"></label>'+
-  '<div class="r2"><label>Преподаватель<input id="sTeach" value="'+v('teacher')+'"></label><label>Аудитория<input id="sRoom" value="'+v('room')+'"></label></div>'+
-  '<div class="r2"><label>Расписание<input id="sSch" placeholder="Пн 10:10, Чт 12:00" value="'+v('schedule')+'"></label><label>Форма контроля<input id="sCtl" list="ctl" placeholder="Экзамен" value="'+v('control')+'"><datalist id="ctl"><option>Экзамен</option><option>Зачёт</option><option>Дифференцированный зачёт</option><option>Курсовая работа</option></datalist></label></div>'+
+  '<label>Форма контроля<input id="sCtl" list="ctl" placeholder="Экзамен" value="'+v('control')+'"><datalist id="ctl"><option>Экзамен</option><option>Зачёт</option><option>Дифференцированный зачёт</option><option>Курсовая работа</option></datalist></label>'+
+  '<div><div class="sub" style="margin-bottom:6px">Занятия: у каждого свой день, время, преподаватель и аудитория</div><div id="lesL" style="display:grid;gap:10px"></div><button class="btn sm" data-a="addLes" style="margin-top:8px">Добавить занятие</button></div>'+
   '<label>Заметки<textarea id="sNotes" placeholder="Требования, критерии оценки, ссылки на материалы">'+v('notes')+'</textarea></label>'+
-  '<div><div class="sub" style="margin-bottom:6px">Цвет</div><div class="sw" id="sw"></div></div>';
-  drawSw();
+  '<div><div class="sub" style="margin-bottom:6px">Цвет дисциплины</div><div class="sw" id="sw"></div></div>';
+  drawSw();drawLes();
   $('dSubF').innerHTML=(s?'<button class="btn dng" id="delS" data-a="delSub" style="margin-right:auto">Удалить</button>':'')+'<button class="btn" data-a="close" data-t="dSub">Отмена</button><button class="btn pri" data-a="saveSub">Сохранить</button>';
   $('dSub').showModal();
 }
-function drawSw(){$('sw').innerHTML=COLORS.map(function(c){return '<button style="--c:'+c+'" class="'+(c===pickC?'on':'')+'" data-a="color" data-id="'+c+'" aria-label="Цвет '+c+'"></button>'}).join('')}
+function drawSw(){$('sw').innerHTML=COLORS.map(function(c){return '<button style="--c:'+c+'" class="'+(c===pickC?'on':'')+'" data-a="color" data-id="'+c+'" aria-label="Цвет '+c+'"></button>'}).join('')+'<label class="cp'+(COLORS.indexOf(pickC)<0?' on':'')+'" title="Свой цвет"><input type="color" id="cpick" value="'+pickC+'"><span>Свой цвет</span></label>'}
 async function saveSub(){
   var n=$('sName').value.trim();
   if(!n){$('sName').focus();toast('Введите название дисциплины');return}
-  var o={name:n,teacher:$('sTeach').value.trim(),room:$('sRoom').value.trim(),schedule:$('sSch').value.trim(),control:$('sCtl').value.trim(),notes:$('sNotes').value.trim(),color:pickC};
+  var o={name:n,control:$('sCtl').value.trim(),notes:$('sNotes').value.trim(),color:pickC,lessons:les};
   try{
     var r=ui.editS?await sb.from('subjects').update(o).eq('id',ui.editS):await sb.from('subjects').insert(o).select();
     if(r.error)throw r.error;
@@ -367,8 +480,16 @@ document.addEventListener('click',function(e){
   var el=e.target.closest('[data-a]');if(!el)return;
   var a=el.dataset.a,id=el.dataset.id,t;
   if(a==='none')return;
-  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub)$/.test(a))return;
-  if(a==='sub'){ui.sub=id;render()}
+  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes)$/.test(a))return;
+  if(a==='sub'){ui.sub=id;ui.q='';$('q').value='';render()}
+  else if(a==='tab'){ui.tab=id;render()}
+  else if(a==='addLes'){les.push({type:'Лекция',day:0,from:'08:30',to:'10:05',week:'all',teacher:'',room:''});drawLes()}
+  else if(a==='rmLes'){les.splice(+el.dataset.i,1);drawLes()}
+  else if(a==='newBook')openBook();
+  else if(a==='editBook')openBook(id);
+  else if(a==='saveBook')saveBook();
+  else if(a==='delBook')delBook(el);
+  else if(a==='pickBook')$('bFile').click();
   else if(a==='flt'){ui.flt=id;render()}
   else if(a==='newTask')openTask();
   else if(a==='editTask')openTask(id);
@@ -392,12 +513,25 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('change',function(e){
   if(e.target.id==='tFile'){addFiles(e.target.files);e.target.value=''}
+  if(e.target.id==='bFile'){
+    var f=e.target.files[0];e.target.value='';if(!f)return;
+    if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toast('Нужен файл PDF');return}
+    if(f.size>50*1048576){toast('Файл больше 50 МБ, его не принимает бесплатный тариф');return}
+    bookFile={n:f.name,t:'application/pdf',size:f.size,raw:f};drawBookFile();
+    if(!$('bTitle').value.trim())$('bTitle').value=f.name.replace(/\.pdf$/i,'');
+  }
+});
+document.addEventListener('input',function(e){
+  var el=e.target;
+  if(el.dataset&&el.dataset.l){var l=les[+el.dataset.i];if(l)l[el.dataset.l]=el.dataset.l==='day'?+el.value:el.value}
+  else if(el.id==='q'){ui.q=el.value;render()}
+  else if(el.id==='cpick'){pickC=el.value;[].forEach.call(document.querySelectorAll('#sw button'),function(b){b.classList.remove('on')});el.parentNode.classList.add('on')}
 });
 document.addEventListener('paste',function(e){var f=[].filter.call((e.clipboardData||{}).files||[],function(x){return x.type.indexOf('image/')===0});if(f.length)addFiles(f)});
 document.addEventListener('dragover',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.add('over')}});
 document.addEventListener('dragleave',function(e){var d=$('drop');if(d)d.classList.remove('over')});
 document.addEventListener('drop',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.remove('over');addFiles(e.dataTransfer.files)}});
-['dTask','dSub','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
+['dTask','dSub','dBook','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
 render();
 $('aPass').addEventListener('keydown',function(e){if(e.key==='Enter')login()});
 if(sb)sb.auth.onAuthStateChange(function(ev,sess){ADMIN=!!sess;document.body.classList.toggle('admin',ADMIN);$('authBtn').textContent=ADMIN?'Выйти':'Вход';render()});
