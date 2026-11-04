@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>НГТУ НЭТИ — дисциплины и дедлайны</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c8102e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -186,12 +192,18 @@ async function load(){
   var c=await sb.from('books').select('*').order('created_at',{ascending:false});
   var d=await sb.from('links').select('*').order('created_at');
   LOADING=false;
-  if(a.error||b.error||c.error||d.error){LOADERR=(a.error||b.error||c.error||d.error).message;return}
+  if(a.error||b.error||c.error||d.error){
+    var cs=null;try{cs=JSON.parse(localStorage.getItem('uchyoba-cache'))}catch(e){}
+    if(cs&&cs.subjects){S={subjects:cs.subjects,tasks:cs.tasks||[],books:cs.books||[],links:cs.links||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADERR='';if(!window._off){window._off=1;toast('Нет связи: показаны сохранённые данные')}return}
+    LOADERR=(a.error||b.error||c.error||d.error).message;return
+  }
+  window._off=0;
   LOADERR='';
   S.subjects=a.data.map(function(r){return {id:r.id,name:r.name,color:r.color,control:r.control,notes:r.notes,lessons:r.lessons||[]}});
   S.tasks=b.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,done:!!DONE[r.id],files:r.files||[]}});
   S.books=c.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,author:r.author,kind:r.kind,file:r.file||{}}});
   S.links=d.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,url:r.url,desc:r.descr,cat:r.category}});
+  try{localStorage.setItem('uchyoba-cache',JSON.stringify(S))}catch(e){}
 }
 function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},3200)}
 function pl(n,f){var a=Math.abs(n)%100,b=a%10;return n+' '+(a>10&&a<20?f[2]:b>1&&b<5?f[1]:b==1?f[0]:f[2])}
@@ -669,6 +681,7 @@ if(tg&&tg.initData){
   try{tg.setHeaderColor('secondary_bg_color')}catch(e){}
   document.addEventListener('click',function(e){var l=e.target.closest('a[href^="http"]');if(l){e.preventDefault();tg.openLink(l.href)}});
 }
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){});
 refresh();
 setInterval(function(){if(!document.querySelector('dialog[open]'))refresh()},60000);
 })();
