@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>НГТУ НЭТИ — дисциплины и дедлайны</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#c8102e">
+<meta name="theme-color" content="#f5f4f2">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -102,7 +102,7 @@ textarea{min-height:80px;resize:vertical}
 #lb .btn{display:block;margin:10px auto 0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:99}
 @media (max-width:820px){
-.app{grid-template-columns:1fr;padding:14px 12px 60px}
+.app{grid-template-columns:minmax(0,1fr);padding:14px 12px 60px}
 aside{flex-direction:row;overflow-x:auto;padding-bottom:4px;align-items:center}
 .nav{width:auto;flex:none;border-color:var(--line);background:var(--card)}
 .stats{grid-template-columns:repeat(2,1fr)}
@@ -144,13 +144,39 @@ aside{gap:14px}
 .lt{font-weight:600;word-break:break-word}
 .ld{font-size:13px;color:var(--mut);word-break:break-word}
 @media (max-width:820px){aside{flex-direction:column;overflow:visible;align-items:stretch}.navl{flex-direction:row;overflow-x:auto;padding-bottom:4px;align-items:center}.calw{max-width:400px}}
+html,body{overflow-x:hidden}
+.app>*{min-width:0}
+.tt{overflow-wrap:anywhere}
+.file{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.df{flex-wrap:wrap}
+.ch .ct{width:auto;flex:1;padding:0 8px;font-weight:600;font-size:14px;color:inherit;height:28px}
+@media (max-width:820px){
+header{flex-wrap:wrap}
+h1{font-size:17px}
+body.admin header .adm{display:none!important}
+.srow{flex-direction:column;align-items:stretch;gap:8px}
+.srow .seg{display:flex}.srow .seg button{flex:1;padding:9px 6px}
+.srow input{max-width:none;min-width:0;width:100%}
+.calw{max-width:none}
+.cd{min-height:40px}
+.stat{padding:10px 12px}.stat b{font-size:20px}
+.task,.book,.lk{padding:10px 12px}
+.btn{min-height:40px}.btn.sm{min-height:34px}
+input,select,textarea{font-size:16px}
+dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
+.bact{width:100%;justify-content:flex-start}
+.book{flex-wrap:wrap}
+.kv{grid-template-columns:1fr 1fr}
+.app{padding:12px 10px 60px;gap:12px}
+.navl{-webkit-overflow-scrolling:touch}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="brand"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect class="sq1" x="2" y="2" width="36" height="36"/><rect class="sq2" x="12" y="12" width="16" height="16"/></svg><div><h1>НГТУ НЭТИ</h1><div class="sub" id="today"></div></div></div>
+  <div class="brand"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="4" width="10" height="32" rx="1.5" fill="var(--acc)"/><rect x="24" y="4" width="10" height="32" rx="1.5" fill="var(--ok)"/><rect x="15" y="15" width="10" height="10" fill="var(--ink)"/></svg><div><h1>НГТУ НЭТИ</h1><div class="sub" id="today"></div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
     <button class="btn" data-a="theme" aria-label="Сменить тему">Тема</button>
     <button class="btn" data-a="auth" id="authBtn">Вход</button>
@@ -227,9 +253,10 @@ var GN=['Просрочено','Сегодня','Завтра','На этой н
 
 function render(){
   $('today').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
-  syncTabs();renderCal();renderNav();renderMain();
+  syncTabs();renderCal();renderNav();renderMain();setTC();
 }
 function openCnt(id){return S.tasks.filter(function(t){return !t.done&&(id==='all'||t.sid===id)})}
+function setTC(){try{var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#f5f4f2'}catch(e){}}
 function navCnt(id){var f=function(x){return id==='all'||x.sid===id};return ui.tab==='books'?S.books.filter(f).length:ui.tab==='links'?S.links.filter(f).length:openCnt(id).length}
 function renderNav(){
   var od=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)<new Date()}).length;
@@ -394,7 +421,10 @@ function renderCal(){
   var cur=ui.sub==='all'?null:subj(ui.sub),by={};
   S.tasks.forEach(function(t){if(!t.due||(cur&&t.sid!==cur.id))return;var k=t.due.slice(0,10);(by[k]=by[k]||[]).push(t)});
   var td=ymd(new Date());
-  var h='<div class="calw"><div class="ch"><button data-a="cmo" data-id="-1" aria-label="Предыдущий месяц">‹</button><span>'+m.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})+'</span><button data-a="cmo" data-id="1" aria-label="Следующий месяц">›</button></div><div class="cg">'+DAYS.map(function(d){return '<div class="wd">'+d+'</div>'}).join('');
+  var open=ui.calOpen===undefined?!matchMedia('(max-width:820px)').matches:ui.calOpen;
+  var h='<div class="calw"><div class="ch"><button data-a="cmo" data-id="-1" aria-label="Предыдущий месяц">‹</button><button class="ct" data-a="ctog" aria-expanded="'+open+'">'+m.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})+' '+(open?'▴':'▾')+'</button><button data-a="cmo" data-id="1" aria-label="Следующий месяц">›</button></div>';
+  if(!open){$('cal').innerHTML=h+'</div>';return}
+  h+='<div class="cg">'+DAYS.map(function(d){return '<div class="wd">'+d+'</div>'}).join('');
   for(var i=0;i<42;i++){
     var d=new Date(y,mo,1-off+i);
     if(i>=35&&d.getMonth()!==mo)break;
@@ -615,8 +645,9 @@ document.addEventListener('click',function(e){
   if(a==='sub'){ui.sub=id;ui.q='';$('q').value='';render()}
   else if(a==='tab'){ui.tab=id;render()}
   else if(a==='cmo'){ui.cal=new Date(ui.cal.getFullYear(),ui.cal.getMonth()+(+id),1);renderCal()}
-  else if(a==='day'){ui.day=ui.day===id?'':id;ui.tab='tasks';ui.q='';$('q').value='';render()}
-  else if(a==='ctoday'){ui.cal=null;ui.day=ymd(new Date());ui.tab='tasks';ui.q='';$('q').value='';render()}
+  else if(a==='ctog'){ui.calOpen=!(ui.calOpen===undefined?!matchMedia('(max-width:820px)').matches:ui.calOpen);renderCal()}
+  else if(a==='day'){if(matchMedia('(max-width:820px)').matches)ui.calOpen=false;ui.day=ui.day===id?'':id;ui.tab='tasks';ui.q='';$('q').value='';render()}
+  else if(a==='ctoday'){if(matchMedia('(max-width:820px)').matches)ui.calOpen=false;ui.cal=null;ui.day=ymd(new Date());ui.tab='tasks';ui.q='';$('q').value='';render()}
   else if(a==='dayoff'){ui.day='';render()}
   else if(a==='newLink')openLink();
   else if(a==='editLink')openLink(id);
@@ -646,7 +677,7 @@ document.addEventListener('click',function(e){
   else if(a==='zoomF'){$('lbi').src=files[+el.dataset.i].d;$('lb').showModal()}
   else if(a==='delTask')delTask(el);
   else if(a==='delSub')delSub(el);
-  else if(a==='theme'){var r=document.documentElement,dk=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dk?'light':'dark'}
+  else if(a==='theme'){var r=document.documentElement,dk=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dk?'light':'dark';setTC()}
   else if(a==='auth'){if(ADMIN&&sb)sb.auth.signOut();else{$('aErr').textContent='';$('dData').showModal()}}
   else if(a==='login')login();
 });
