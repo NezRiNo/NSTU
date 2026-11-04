@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>НГТУ НЭТИ — дисциплины и дедлайны</title>
+<title>НГТУ НЭТИ</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f5f4f2">
 <link rel="icon" href="icon-192.png">
@@ -271,7 +271,7 @@ function renderMain(){
   var h='',cur=ui.sub==='all'?null:subj(ui.sub);
   if(ui.sub!=='all'&&!cur){ui.sub='all'}
   if(!sb){$('main').innerHTML='<div class="empty"><b>Сайт ещё не подключён к базе</b>Впишите SB_URL и SB_KEY в index.html (см. README).</div>';return}
-  if(LOADING){$('main').innerHTML='<div class="empty"><b>Загрузка…</b></div>';return}
+  if(LOADING){$('main').innerHTML='';return}
   if(LOADERR){$('main').innerHTML='<div class="empty"><b>Не удалось загрузить данные</b>'+esc(LOADERR)+'</div>';return}
   if(ui.tab==='books'){renderBooks();return}
   if(ui.tab==='links'){renderLinks();return}
@@ -702,6 +702,7 @@ document.addEventListener('dragover',function(e){var d=$('drop');if(d&&d.contain
 document.addEventListener('dragleave',function(e){var d=$('drop');if(d)d.classList.remove('over')});
 document.addEventListener('drop',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.remove('over');addFiles(e.dataTransfer.files)}});
 ['dTask','dSub','dBook','dLink','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
+try{var cs0=JSON.parse(localStorage.getItem('uchyoba-cache'));if(cs0&&cs0.subjects){S={subjects:cs0.subjects,tasks:cs0.tasks||[],books:cs0.books||[],links:cs0.links||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADING=false}}catch(e){}
 render();
 $('aPass').addEventListener('keydown',function(e){if(e.key==='Enter')login()});
 if(sb)sb.auth.onAuthStateChange(function(ev,sess){ADMIN=!!sess;document.body.classList.toggle('admin',ADMIN);$('authBtn').textContent=ADMIN?'Выйти':'Вход';render()});
