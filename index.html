@@ -107,7 +107,7 @@ aside{flex-direction:row;overflow-x:auto;padding-bottom:4px;align-items:center}
 .nav{width:auto;flex:none;border-color:var(--line);background:var(--card)}
 .stats{grid-template-columns:repeat(2,1fr)}
 .r2{grid-template-columns:1fr}}
-.adm{display:none!important}body.admin .adm{display:inline-block!important}body:not(.admin) .tb{cursor:default}
+.adm{display:none!important}body.admin .adm{display:inline-block!important}
 .srow{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .srow input{flex:1;min-width:200px;max-width:440px;padding-left:36px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238a8f98' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l4 4'/%3E%3C/svg%3E") no-repeat 11px center}
 #dSub{width:min(680px,94vw)}
@@ -170,6 +170,12 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .app{padding:12px 10px 60px;gap:12px}
 .navl{-webkit-overflow-scrolling:touch}
 }
+#dView{width:min(640px,94vw)}
+.vdesc{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}
+.vdesc a{color:var(--acc)}
+.vimgs{display:grid;gap:10px}
+.vimg{max-width:100%;max-height:60vh;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;display:block;margin:0 auto}
+.vsec{font-size:13px;color:var(--mut);font-weight:500;margin-bottom:4px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -190,6 +196,7 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 
 <dialog id="dTask"><div class="dh" id="dTaskH"></div><div class="db" id="dTaskB"></div><div class="df" id="dTaskF"></div></dialog>
 <dialog id="dSub"><div class="dh" id="dSubH"></div><div class="db" id="dSubB"></div><div class="df" id="dSubF"></div></dialog>
+<dialog id="dView"><div class="dh" id="dViewH" style="overflow-wrap:anywhere"></div><div class="db" id="dViewB"></div><div class="df" id="dViewF"></div></dialog>
 <dialog id="dLink"><div class="dh" id="dLinkH"></div><div class="db" id="dLinkB"></div><div class="df" id="dLinkF"></div></dialog>
 <dialog id="dBook"><div class="dh" id="dBookH"></div><div class="db" id="dBookB"></div><div class="df" id="dBookF"></div></dialog>
 <dialog id="dData"><div class="dh">Вход для администратора</div><div class="db"><label>Почта<input id="aEmail" type="email" autocomplete="username"></label><label>Пароль<input id="aPass" type="password" autocomplete="current-password"></label><div id="aErr" style="color:var(--bad);font-size:14px"></div></div><div class="df"><button class="btn" data-a="close" data-t="dData">Отмена</button><button class="btn pri" data-a="login">Войти</button></div></dialog>
@@ -503,6 +510,27 @@ async function delLink(el){
   catch(e){toast('Ошибка: '+(e.message||e))}
 }
 
+/* ---------- просмотр задания ---------- */
+function linkify(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,function(u){return '<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+u+'</a>'})}
+function openView(id){
+  var t=S.tasks.find(function(x){return x.id===id});if(!t)return;
+  var s=subj(t.sid)||{name:'Без дисциплины',color:'#8a8f98',lessons:[]},di=dueInfo(t);
+  var imgs='',fl='',teachers=[];
+  (t.files||[]).forEach(function(f,i){
+    if(f.t.indexOf('image/')===0)imgs+='<img class="vimg" data-a="zoom" data-id="'+t.id+'" data-i="'+i+'" src="'+esc(f.d)+'" alt="'+esc(f.n)+'">';
+    else fl+='<a class="file" href="'+esc(f.d)+'" target="_blank" rel="noopener noreferrer">'+esc(f.n)+'</a> ';
+  });
+  (s.lessons||[]).forEach(function(l){if(l.teacher&&teachers.indexOf(l.teacher)<0)teachers.push(l.teacher)});
+  $('dViewH').textContent=t.title;
+  $('dViewB').innerHTML='<div class="meta" style="margin:0;--c:'+s.color+'"><span class="chip">'+esc(s.name)+'</span><span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+(t.done?'<span class="pr" style="border-color:var(--ok);color:var(--ok)">Выполнено</span>':'')+'</div>'+
+  (teachers.length?'<div><div class="vsec">Преподаватели</div>'+esc(teachers.join(', '))+'</div>':'')+
+  '<div><div class="vsec">Описание</div><div class="vdesc">'+(t.desc?linkify(t.desc):'<span style="color:var(--mut)">Описание не добавлено</span>')+'</div></div>'+
+  (fl?'<div><div class="vsec">Файлы</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+fl+'</div></div>':'')+
+  (imgs?'<div><div class="vsec">Фото</div><div class="vimgs">'+imgs+'</div></div>':'');
+  $('dViewF').innerHTML='<button class="btn" data-a="close" data-t="dView">Закрыть</button><button class="btn pri" data-a="toggleV" data-id="'+t.id+'">'+(t.done?'Вернуть в активные':'Отметить выполненным')+'</button>';
+  $('dView').showModal();
+}
+
 /* ---------- задания ---------- */
 var files=[];
 function openTask(id){
@@ -641,6 +669,8 @@ document.addEventListener('click',function(e){
   var el=e.target.closest('[data-a]');if(!el)return;
   var a=el.dataset.a,id=el.dataset.id,t;
   if(a==='none')return;
+  if(a==='editTask'&&!ADMIN){openView(id);return}
+  if(a==='toggleV'){t=S.tasks.find(function(x){return x.id===id});t.done=!t.done;if(t.done)DONE[id]=1;else delete DONE[id];saveDone();$('dView').close();render();return}
   if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink)$/.test(a))return;
   if(a==='sub'){ui.sub=id;ui.q='';$('q').value='';render()}
   else if(a==='tab'){ui.tab=id;render()}
@@ -701,7 +731,7 @@ document.addEventListener('paste',function(e){var f=[].filter.call((e.clipboardD
 document.addEventListener('dragover',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.add('over')}});
 document.addEventListener('dragleave',function(e){var d=$('drop');if(d)d.classList.remove('over')});
 document.addEventListener('drop',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.remove('over');addFiles(e.dataTransfer.files)}});
-['dTask','dSub','dBook','dLink','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
+['dTask','dSub','dBook','dLink','dView','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
 try{var cs0=JSON.parse(localStorage.getItem('uchyoba-cache'));if(cs0&&cs0.subjects){S={subjects:cs0.subjects,tasks:cs0.tasks||[],books:cs0.books||[],links:cs0.links||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADING=false}}catch(e){}
 render();
 $('aPass').addEventListener('keydown',function(e){if(e.key==='Enter')login()});
