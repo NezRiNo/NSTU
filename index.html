@@ -176,6 +176,10 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .vimgs{display:grid;gap:10px}
 .vimg{max-width:100%;max-height:60vh;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;display:block;margin:0 auto}
 .vsec{font-size:13px;color:var(--mut);font-weight:500;margin-bottom:4px}
+.boot{display:flex;gap:14px;align-items:flex-end;justify-content:center;height:46px;margin:22vh auto 0}
+.boot b{width:16px;height:16px;border-radius:50%;border:2px solid transparent;display:block;animation:hop 1.4s ease-in-out infinite}
+@keyframes hop{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-24px)}}
+@media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -278,7 +282,7 @@ function renderMain(){
   var h='',cur=ui.sub==='all'?null:subj(ui.sub);
   if(ui.sub!=='all'&&!cur){ui.sub='all'}
   if(!sb){$('main').innerHTML='<div class="empty"><b>Сайт ещё не подключён к базе</b>Впишите SB_URL и SB_KEY в index.html (см. README).</div>';return}
-  if(LOADING){$('main').innerHTML='';return}
+  if(LOADING){$('main').innerHTML='<div class="boot" role="status" aria-label="Загрузка"><b style="background:#c8102e"></b><b style="background:#1f8a4c;animation-delay:.15s"></b><b style="background:#fff;border-color:#1e2024;animation-delay:.3s"></b><b style="background:#1e2024;border-color:#fff;animation-delay:.45s"></b></div>';return}
   if(LOADERR){$('main').innerHTML='<div class="empty"><b>Не удалось загрузить данные</b>'+esc(LOADERR)+'</div>';return}
   if(ui.tab==='books'){renderBooks();return}
   if(ui.tab==='links'){renderLinks();return}
