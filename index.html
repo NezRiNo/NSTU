@@ -179,6 +179,11 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .boot{display:flex;gap:14px;align-items:flex-end;justify-content:center;height:46px;margin:22vh auto 0}
 .boot b{width:16px;height:16px;border-radius:50%;border:2px solid transparent;display:block;animation:hop 1.4s ease-in-out infinite}
 @keyframes hop{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-24px)}}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--sh);border-left:5px solid var(--c);min-width:0}
+.av{width:40px;height:40px;border-radius:50%;background:color-mix(in srgb,var(--c) 20%,transparent);display:grid;place-items:center;font-weight:700;flex:none}
+.trow{font-size:14px;margin-top:8px;overflow-wrap:anywhere}.trow small{display:block;color:var(--mut);font-size:12px}.trow a{color:var(--acc)}
+@media (max-width:820px){.srow .seg button{font-size:13px;padding:9px 4px;white-space:nowrap}}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -193,13 +198,14 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
     <button class="btn pri adm" data-a="newTask">Новое задание</button>
   </div>
 </header>
-<div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="books" id="tabB">Литература</button><button data-a="tab" data-id="links" id="tabL">Ссылки</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
+<div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="books" id="tabB">Литература</button><button data-a="tab" data-id="links" id="tabL">Ссылки</button><button data-a="tab" data-id="teachers" id="tabP">Преподаватели</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
 <aside><div id="cal"></div><div class="navl" id="nav"></div></aside>
 <main id="main"></main>
 </div>
 
 <dialog id="dTask"><div class="dh" id="dTaskH"></div><div class="db" id="dTaskB"></div><div class="df" id="dTaskF"></div></dialog>
 <dialog id="dSub"><div class="dh" id="dSubH"></div><div class="db" id="dSubB"></div><div class="df" id="dSubF"></div></dialog>
+<dialog id="dTeach"><div class="dh" id="dTeachH"></div><div class="db" id="dTeachB"></div><div class="df" id="dTeachF"></div></dialog>
 <dialog id="dView"><div class="dh" id="dViewH" style="overflow-wrap:anywhere"></div><div class="db" id="dViewB"></div><div class="df" id="dViewF"></div></dialog>
 <dialog id="dLink"><div class="dh" id="dLinkH"></div><div class="db" id="dLinkB"></div><div class="df" id="dLinkF"></div></dialog>
 <dialog id="dBook"><div class="dh" id="dBookH"></div><div class="db" id="dBookB"></div><div class="df" id="dBookF"></div></dialog>
@@ -217,7 +223,7 @@ var sb=(SB_URL.indexOf('YOUR-')<0&&window.supabase)?window.supabase.createClient
 var ADMIN=false,LOADING=true,LOADERR='',DONE={};
 try{DONE=JSON.parse(localStorage.getItem('uchyoba-done')||'{}')}catch(e){}
 function saveDone(){try{localStorage.setItem('uchyoba-done',JSON.stringify(DONE))}catch(e){}}
-var S={subjects:[],tasks:[],books:[],links:[]};
+var S={subjects:[],tasks:[],books:[],links:[],teachers:[]};
 var ui={sub:'all',flt:'active',tab:'tasks',q:'',editT:null,editS:null,editB:null};
 var $=function(i){return document.getElementById(i)};
 function uid(){return Math.random().toString(36).slice(2,10)}
@@ -228,10 +234,11 @@ async function load(){
   var b=await sb.from('tasks').select('*');
   var c=await sb.from('books').select('*').order('created_at',{ascending:false});
   var d=await sb.from('links').select('*').order('created_at');
+  var e2=await sb.from('teachers').select('*').order('name');
   LOADING=false;
   if(a.error||b.error||c.error||d.error){
     var cs=null;try{cs=JSON.parse(localStorage.getItem('uchyoba-cache'))}catch(e){}
-    if(cs&&cs.subjects){S={subjects:cs.subjects,tasks:cs.tasks||[],books:cs.books||[],links:cs.links||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADERR='';if(!window._off){window._off=1;toast('Нет связи: показаны сохранённые данные')}return}
+    if(cs&&cs.subjects){S={subjects:cs.subjects,tasks:cs.tasks||[],books:cs.books||[],links:cs.links||[],teachers:cs.teachers||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADERR='';if(!window._off){window._off=1;toast('Нет связи: показаны сохранённые данные')}return}
     LOADERR=(a.error||b.error||c.error||d.error).message;return
   }
   window._off=0;
@@ -240,6 +247,7 @@ async function load(){
   S.tasks=b.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,done:!!DONE[r.id],files:r.files||[]}});
   S.books=c.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,author:r.author,kind:r.kind,file:r.file||{}}});
   S.links=d.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,url:r.url,desc:r.descr,cat:r.category}});
+  S.teachers=e2.error?[]:e2.data.map(function(r){return {id:r.id,name:r.name,dept:r.dept,email:r.email,phone:r.phone,room:r.room,consult:r.consult,notes:r.notes}});
   try{localStorage.setItem('uchyoba-cache',JSON.stringify(S))}catch(e){}
 }
 function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},3200)}
@@ -268,7 +276,7 @@ function render(){
 }
 function openCnt(id){return S.tasks.filter(function(t){return !t.done&&(id==='all'||t.sid===id)})}
 function setTC(){try{var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#f5f4f2'}catch(e){}}
-function navCnt(id){var f=function(x){return id==='all'||x.sid===id};return ui.tab==='books'?S.books.filter(f).length:ui.tab==='links'?S.links.filter(f).length:openCnt(id).length}
+function navCnt(id){var f=function(x){return id==='all'||x.sid===id};return ui.tab==='books'?S.books.filter(f).length:ui.tab==='links'?S.links.filter(f).length:ui.tab==='teachers'?teacherList().filter(function(o){return id==='all'||o.subs[id]}).length:openCnt(id).length}
 function renderNav(){
   var od=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)<new Date()}).length;
   var h='<button class="nav'+(ui.sub==='all'?' on':'')+'" data-a="sub" data-id="all"><span class="dot" style="background:var(--ink)"></span><span class="nm">Все дисциплины</span>'+(od&&ui.tab==='tasks'?'<span class="cnt bad" title="Просрочено">'+od+'</span>':'<span class="cnt">'+navCnt('all')+'</span>')+'</button>';
@@ -286,6 +294,7 @@ function renderMain(){
   if(LOADERR){$('main').innerHTML='<div class="empty"><b>Не удалось загрузить данные</b>'+esc(LOADERR)+'</div>';return}
   if(ui.tab==='books'){renderBooks();return}
   if(ui.tab==='links'){renderLinks();return}
+  if(ui.tab==='teachers'){renderTeachers();return}
   if(!S.subjects.length){
     $('main').innerHTML='<div class="empty"><b>Пока нет дисциплин</b>'+(ADMIN?'Добавьте первую дисциплину, затем задания с дедлайнами и фото.<div style="margin-top:14px"><button class="btn pri" data-a="newSub">Добавить дисциплину</button></div>':'Информации пока нет. Загляните позже.')+'</div>';return;
   }
@@ -343,8 +352,8 @@ function lessonsH(s){
 function hs(s){return (s.name+' '+(s.control||'')+' '+(s.notes||'')+' '+(s.lessons||[]).map(function(l){return l.type+' '+l.teacher+' '+l.room}).join(' ')).toLowerCase()}
 function mb(n){return (n/1048576).toFixed(1).replace('.',',')+' МБ'}
 function syncTabs(){
-  $('tabT').className=ui.tab==='tasks'?'on':'';$('tabB').className=ui.tab==='books'?'on':'';$('tabL').className=ui.tab==='links'?'on':'';
-  $('q').placeholder=ui.tab==='books'?'Поиск по литературе: название, автор, дисциплина':ui.tab==='links'?'Поиск по ссылкам':'Поиск по заданиям и дисциплинам';
+  $('tabT').className=ui.tab==='tasks'?'on':'';$('tabB').className=ui.tab==='books'?'on':'';$('tabL').className=ui.tab==='links'?'on':'';$('tabP').className=ui.tab==='teachers'?'on':'';
+  $('q').placeholder=ui.tab==='books'?'Поиск по литературе: название, автор, дисциплина':ui.tab==='links'?'Поиск по ссылкам':ui.tab==='teachers'?'Поиск по преподавателям':'Поиск по заданиям и дисциплинам';
 }
 function bookMatch(b,q){var s=subj(b.sid);return (b.title+' '+b.author+' '+b.kind+' '+(s?s.name:'')).toLowerCase().indexOf(q)>=0}
 function renderSearch(){
@@ -354,10 +363,12 @@ function renderSearch(){
   ts.sort(function(a,b){return (a.done-b.done)||((a.due?new Date(a.due):8.6e15)-(b.due?new Date(b.due):8.6e15))});
   var bs=S.books.filter(function(b){return bookMatch(b,q)});
   var ls=S.links.filter(function(l){return linkMatch(l,q)});
+  var ps=teacherList().filter(function(o){return teacherMatch(o,q)});
   if(subs.length){h+='<div class="grp">Дисциплины</div>'+subs.map(function(s){return '<button class="nav" style="background:var(--card);border-color:var(--line);margin-bottom:6px" data-a="sub" data-id="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span></button>'}).join('')}
   if(ts.length){h+='<div class="grp">Задания</div>'+ts.map(function(t){return taskH(t,dueInfo(t))}).join('')}
   if(bs.length){h+='<div class="grp">Литература</div>'+bs.map(bookH).join('')}
   if(ls.length){h+='<div class="grp">Ссылки</div><div class="lgrid">'+ls.map(linkH).join('')+'</div>'}
+  if(ps.length){h+='<div class="grp">Преподаватели</div><div class="tgrid">'+ps.map(teacherH).join('')+'</div>'}
   if(!h)h='<div class="empty"><b>Ничего не найдено</b>Попробуйте другое слово: название задания, дисциплины или фамилию преподавателя.</div>';
   $('main').innerHTML=h;
 }
@@ -420,7 +431,7 @@ function drawLes(){
   $('lesL').innerHTML=les.length?les.map(function(l,i){
     var d=' data-i="'+i+'"';
     return '<div class="lrow"><div class="lg"><label>Тип<select data-l="type"'+d+'>'+TYPES.map(function(t){return '<option'+(t===l.type?' selected':'')+'>'+t+'</option>'}).join('')+'</select></label><label>День<select data-l="day"'+d+'>'+DAYF.map(function(n,k){return '<option value="'+k+'"'+(k==l.day?' selected':'')+'>'+n+'</option>'}).join('')+'</select></label><label>Начало<input type="time" data-l="from"'+d+' value="'+esc(l.from)+'"></label><label>Конец<input type="time" data-l="to"'+d+' value="'+esc(l.to)+'"></label><label>Неделя<select data-l="week"'+d+'>'+Object.keys(WEEKS).map(function(k){return '<option value="'+k+'"'+(k===l.week?' selected':'')+'>'+WEEKS[k]+'</option>'}).join('')+'</select></label></div>'+
-    '<div class="lg" style="grid-template-columns:1fr 1fr"><label>Преподаватель<input data-l="teacher"'+d+' value="'+esc(l.teacher)+'" placeholder="Фамилия И. О."></label><label>Аудитория<input data-l="room"'+d+' value="'+esc(l.room)+'" placeholder="Например, 3-405"></label></div><button class="btn sm dng" data-a="rmLes"'+d+' style="justify-self:end">Убрать занятие</button></div>';
+    '<div class="lg" style="grid-template-columns:1fr 1fr"><label>Преподаватель<input data-l="teacher"'+d+' value="'+esc(l.teacher)+'" placeholder="Фамилия И. О. (несколько: через запятую)"></label><label>Аудитория<input data-l="room"'+d+' value="'+esc(l.room)+'" placeholder="Например, 3-405"></label></div><button class="btn sm dng" data-a="rmLes"'+d+' style="justify-self:end">Убрать занятие</button></div>';
   }).join(''):'<div class="sub">Занятий пока нет. Добавьте лекцию, практику или лабораторную.</div>';
 }
 
@@ -511,6 +522,69 @@ async function delLink(el){
   if(!armed){armed=true;el.textContent='Точно удалить?';return}
   armed=false;
   try{var r=await sb.from('links').delete().eq('id',ui.editL);if(r.error)throw r.error;$('dLink').close();await load();render()}
+  catch(e){toast('Ошибка: '+(e.message||e))}
+}
+
+/* ---------- преподаватели ---------- */
+function nk(n){return String(n).toLowerCase().replace(/[.,]/g,' ').replace(/\s+/g,' ').trim()}
+function teacherList(){
+  var map={};
+  S.subjects.forEach(function(s){(s.lessons||[]).forEach(function(l){
+    String(l.teacher||'').split(/[;,\/]+/).forEach(function(nm){
+      nm=nm.trim();if(!nm)return;var k=nk(nm);
+      var o=map[k]||(map[k]={name:nm,subs:{},rec:null});
+      var x=o.subs[s.id]||(o.subs[s.id]={s:s,types:[]});
+      if(x.types.indexOf(l.type)<0)x.types.push(l.type);
+    });
+  })});
+  S.teachers.forEach(function(r){var k=nk(r.name);var o=map[k]||(map[k]={name:r.name,subs:{},rec:null});o.rec=r;o.name=r.name});
+  return Object.keys(map).map(function(k){return map[k]}).sort(function(a,b){return a.name.localeCompare(b.name,'ru')});
+}
+function teacherMatch(o,q){var r=o.rec||{};return (o.name+' '+(r.dept||'')+' '+(r.email||'')+' '+(r.room||'')+' '+(r.consult||'')+' '+(r.notes||'')+' '+Object.keys(o.subs).map(function(k){return o.subs[k].s.name}).join(' ')).toLowerCase().indexOf(q)>=0}
+function teacherH(o){
+  var r=o.rec||{},keys=Object.keys(o.subs),c=keys.length?o.subs[keys[0]].s.color:'#8a8f98';
+  var parts=o.name.split(/\s+/),ini=((parts[0]||'?').charAt(0)+(parts[1]||'').charAt(0)).toUpperCase();
+  var chips=keys.map(function(k){var x=o.subs[k];return '<span class="chip" style="--c:'+x.s.color+'">'+esc(x.s.name)+': '+esc(x.types.join(', ').toLowerCase())+'</span>'}).join(' ');
+  var row=function(t,v){return v?'<div class="trow"><small>'+t+'</small>'+v+'</div>':''};
+  return '<div class="tcard" style="--c:'+c+'"><div style="display:flex;gap:12px;align-items:center"><div class="av">'+esc(ini)+'</div><div style="min-width:0"><div class="lt">'+esc(o.name)+'</div>'+(r.dept?'<div class="ld">'+esc(r.dept)+'</div>':'')+'</div></div>'+(chips?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+chips+'</div>':'')+
+  row('Консультации',esc(r.consult||''))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+
+  '<div style="margin-top:10px"><button class="btn sm adm" data-a="editTeach" data-id="'+(o.rec?o.rec.id:'')+'" data-n="'+esc(o.name)+'">'+(o.rec?'Изменить':'Дополнить данные')+'</button></div></div>';
+}
+function renderTeachers(){
+  var cur=ui.sub==='all'?null:subj(ui.sub),q=ui.q.toLowerCase().trim();
+  var list=teacherList().filter(function(o){return (!cur||o.subs[cur.id])&&(!q||teacherMatch(o,q))});
+  var h='<div class="tools"><b>'+(cur?esc(cur.name):'Все преподаватели')+'</b><span class="sub">'+list.length+' чел.</span><span class="sp"></span><button class="btn pri adm" data-a="newTeach">Добавить преподавателя</button></div>';
+  h+=list.length?'<div class="tgrid">'+list.map(teacherH).join('')+'</div>':'<div class="empty"><b>'+(q?'Ничего не найдено':'Преподавателей пока нет')+'</b>'+(q?'Попробуйте другое слово.':'Они появятся сами, когда в занятиях дисциплины будет указан преподаватель.')+'</div>';
+  $('main').innerHTML=h;
+}
+function openTeach(id,name){
+  var r=id?S.teachers.find(function(x){return x.id===id}):null;
+  ui.editP=r?r.id:null;armed=false;
+  var v=function(k){return esc(r?r[k]:'')};
+  $('dTeachH').textContent=r?'Данные преподавателя':'Преподаватель';
+  $('dTeachB').innerHTML='<label>ФИО<input id="pName" placeholder="Иванова Е. П." value="'+(r?esc(r.name):esc(name||''))+'"></label><div class="sub">Пишите ФИО так же, как в занятиях, тогда карточка свяжется с дисциплинами. Публикуйте только рабочие контакты.</div>'+
+  '<label>Кафедра или должность<input id="pDept" placeholder="Например, кафедра высшей математики" value="'+v('dept')+'"></label>'+
+  '<div class="r2"><label>Почта<input id="pMail" type="email" inputmode="email" value="'+v('email')+'"></label><label>Телефон<input id="pPhone" type="tel" value="'+v('phone')+'"></label></div>'+
+  '<label>Кабинет<input id="pRoom" placeholder="Например, 3-405" value="'+v('room')+'"></label>'+
+  '<label>Часы консультаций<textarea id="pCons" style="min-height:60px" placeholder="Например, вт 14:00–15:30">'+v('consult')+'</textarea></label>'+
+  '<label>Заметки<textarea id="pNotes" style="min-height:60px" placeholder="Как лучше связаться, особенности приёма">'+v('notes')+'</textarea></label>';
+  $('dTeachF').innerHTML=(r?'<button class="btn dng" data-a="delTeach" style="margin-right:auto">Удалить</button>':'')+'<button class="btn" data-a="close" data-t="dTeach">Отмена</button><button class="btn pri" data-a="saveTeach">Сохранить</button>';
+  $('dTeach').showModal();
+}
+async function saveTeach(){
+  var name=$('pName').value.trim();
+  if(!name){$('pName').focus();toast('Введите ФИО');return}
+  var row={name:name,dept:$('pDept').value.trim(),email:$('pMail').value.trim(),phone:$('pPhone').value.trim(),room:$('pRoom').value.trim(),consult:$('pCons').value.trim(),notes:$('pNotes').value.trim()};
+  try{
+    var r=ui.editP?await sb.from('teachers').update(row).eq('id',ui.editP):await sb.from('teachers').insert(row);
+    if(r.error)throw r.error;
+    $('dTeach').close();await load();render();toast('Сохранено');
+  }catch(e){toast('Ошибка: '+(e.message||e))}
+}
+async function delTeach(el){
+  if(!armed){armed=true;el.textContent='Точно удалить?';return}
+  armed=false;
+  try{var r=await sb.from('teachers').delete().eq('id',ui.editP);if(r.error)throw r.error;$('dTeach').close();await load();render()}
   catch(e){toast('Ошибка: '+(e.message||e))}
 }
 
@@ -675,7 +749,7 @@ document.addEventListener('click',function(e){
   if(a==='none')return;
   if(a==='editTask'&&!ADMIN){openView(id);return}
   if(a==='toggleV'){t=S.tasks.find(function(x){return x.id===id});t.done=!t.done;if(t.done)DONE[id]=1;else delete DONE[id];saveDone();$('dView').close();render();return}
-  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink)$/.test(a))return;
+  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink|newTeach|editTeach|saveTeach|delTeach)$/.test(a))return;
   if(a==='sub'){ui.sub=id;ui.q='';$('q').value='';render()}
   else if(a==='tab'){ui.tab=id;render()}
   else if(a==='cmo'){ui.cal=new Date(ui.cal.getFullYear(),ui.cal.getMonth()+(+id),1);renderCal()}
@@ -687,6 +761,10 @@ document.addEventListener('click',function(e){
   else if(a==='editLink')openLink(id);
   else if(a==='saveLink')saveLink();
   else if(a==='delLink')delLink(el);
+  else if(a==='newTeach')openTeach();
+  else if(a==='editTeach')openTeach(id,el.dataset.n);
+  else if(a==='saveTeach')saveTeach();
+  else if(a==='delTeach')delTeach(el);
   else if(a==='addLes'){les.push({type:'Лекция',day:0,from:'08:30',to:'10:05',week:'all',teacher:'',room:''});drawLes()}
   else if(a==='rmLes'){les.splice(+el.dataset.i,1);drawLes()}
   else if(a==='newBook')openBook();
@@ -735,8 +813,8 @@ document.addEventListener('paste',function(e){var f=[].filter.call((e.clipboardD
 document.addEventListener('dragover',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.add('over')}});
 document.addEventListener('dragleave',function(e){var d=$('drop');if(d)d.classList.remove('over')});
 document.addEventListener('drop',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.remove('over');addFiles(e.dataTransfer.files)}});
-['dTask','dSub','dBook','dLink','dView','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
-try{var cs0=JSON.parse(localStorage.getItem('uchyoba-cache'));if(cs0&&cs0.subjects){S={subjects:cs0.subjects,tasks:cs0.tasks||[],books:cs0.books||[],links:cs0.links||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADING=false}}catch(e){}
+['dTask','dSub','dBook','dLink','dTeach','dView','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
+try{var cs0=JSON.parse(localStorage.getItem('uchyoba-cache'));if(cs0&&cs0.subjects){S={subjects:cs0.subjects,tasks:cs0.tasks||[],books:cs0.books||[],links:cs0.links||[],teachers:cs0.teachers||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADING=false}}catch(e){}
 render();
 $('aPass').addEventListener('keydown',function(e){if(e.key==='Enter')login()});
 if(sb)sb.auth.onAuthStateChange(function(ev,sess){ADMIN=!!sess;document.body.classList.toggle('admin',ADMIN);$('authBtn').textContent=ADMIN?'Выйти':'Вход';render()});
