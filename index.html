@@ -184,6 +184,12 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .av{width:40px;height:40px;border-radius:50%;background:color-mix(in srgb,var(--c) 20%,transparent);display:grid;place-items:center;font-weight:700;flex:none}
 .trow{font-size:14px;margin-top:8px;overflow-wrap:anywhere}.trow small{display:block;color:var(--mut);font-size:12px}.trow a{color:var(--acc)}
 @media (max-width:820px){.srow .seg button{font-size:13px;padding:9px 4px;white-space:nowrap}}
+#dTeach{width:min(680px,94vw)}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1px solid var(--line);border-radius:20px;padding:6px 12px;background:var(--card);display:inline-flex;gap:8px;align-items:center;font-size:14px}
+.pill.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent);font-weight:600}
+.cons{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:14px;margin-top:6px}
+.cb{font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -244,10 +250,10 @@ async function load(){
   window._off=0;
   LOADERR='';
   S.subjects=a.data.map(function(r){return {id:r.id,name:r.name,color:r.color,control:r.control,notes:r.notes,lessons:r.lessons||[]}});
-  S.tasks=b.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,done:!!DONE[r.id],files:r.files||[]}});
+  S.tasks=b.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,teacher:r.teacher||'',done:!!DONE[r.id],files:r.files||[]}});
   S.books=c.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,author:r.author,kind:r.kind,file:r.file||{}}});
   S.links=d.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,url:r.url,desc:r.descr,cat:r.category}});
-  S.teachers=e2.error?[]:e2.data.map(function(r){return {id:r.id,name:r.name,dept:r.dept,email:r.email,phone:r.phone,room:r.room,consult:r.consult,notes:r.notes}});
+  S.teachers=e2.error?[]:e2.data.map(function(r){return {id:r.id,name:r.name,dept:r.dept,email:r.email,phone:r.phone,room:r.room,consult:r.consult,notes:r.notes,subject_ids:r.subject_ids||[],consults:r.consults||[]}});
   try{localStorage.setItem('uchyoba-cache',JSON.stringify(S))}catch(e){}
 }
 function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},3200)}
@@ -334,7 +340,7 @@ function taskH(t,di){
     else fl+='<a class="file" href="'+f.d+'" download="'+esc(f.n)+'" data-a="none">'+esc(f.n)+'</a>';
   });
   return '<div class="task'+(t.done?' done':'')+'" style="--c:'+s.color+'"><button class="chk" data-a="toggle" data-id="'+t.id+'" aria-label="Отметить выполненным">'+(t.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3 3 7-7" stroke="#fff" stroke-width="2" fill="none"/></svg>':'')+'</button>'+
-  '<div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="tt">'+esc(t.title)+'</div><div class="meta"><span class="chip">'+esc(s.name)+'</span><span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div>';
+  '<div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="tt">'+esc(t.title)+'</div><div class="meta"><span class="chip">'+esc(s.name)+'</span>'+(t.teacher?'<span>'+esc(t.teacher)+'</span>':'')+'<span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div>';
 }
 
 /* ---------- занятия, поиск, литература ---------- */
@@ -537,17 +543,17 @@ function teacherList(){
       if(x.types.indexOf(l.type)<0)x.types.push(l.type);
     });
   })});
-  S.teachers.forEach(function(r){var k=nk(r.name);var o=map[k]||(map[k]={name:r.name,subs:{},rec:null});o.rec=r;o.name=r.name});
+  S.teachers.forEach(function(r){var k=nk(r.name);var o=map[k]||(map[k]={name:r.name,subs:{},rec:null});o.rec=r;o.name=r.name;(r.subject_ids||[]).forEach(function(sid){var sb2=subj(sid);if(sb2&&!o.subs[sid])o.subs[sid]={s:sb2,types:[]}})});
   return Object.keys(map).map(function(k){return map[k]}).sort(function(a,b){return a.name.localeCompare(b.name,'ru')});
 }
-function teacherMatch(o,q){var r=o.rec||{};return (o.name+' '+(r.dept||'')+' '+(r.email||'')+' '+(r.room||'')+' '+(r.consult||'')+' '+(r.notes||'')+' '+Object.keys(o.subs).map(function(k){return o.subs[k].s.name}).join(' ')).toLowerCase().indexOf(q)>=0}
+function teacherMatch(o,q){var r=o.rec||{};return (o.name+' '+(r.dept||'')+' '+(r.email||'')+' '+(r.room||'')+' '+(r.consult||'')+' '+(r.notes||'')+' '+JSON.stringify(r.consults||[])+' '+Object.keys(o.subs).map(function(k){return o.subs[k].s.name}).join(' ')).toLowerCase().indexOf(q)>=0}
 function teacherH(o){
   var r=o.rec||{},keys=Object.keys(o.subs),c=keys.length?o.subs[keys[0]].s.color:'#8a8f98';
   var parts=o.name.split(/\s+/),ini=((parts[0]||'?').charAt(0)+(parts[1]||'').charAt(0)).toUpperCase();
-  var chips=keys.map(function(k){var x=o.subs[k];return '<span class="chip" style="--c:'+x.s.color+'">'+esc(x.s.name)+': '+esc(x.types.join(', ').toLowerCase())+'</span>'}).join(' ');
+  var chips=keys.map(function(k){var x=o.subs[k];return '<span class="chip" style="--c:'+x.s.color+'">'+esc(x.s.name)+(x.types.length?': '+esc(x.types.join(', ').toLowerCase()):'')+'</span>'}).join(' ');
   var row=function(t,v){return v?'<div class="trow"><small>'+t+'</small>'+v+'</div>':''};
   return '<div class="tcard" style="--c:'+c+'"><div style="display:flex;gap:12px;align-items:center"><div class="av">'+esc(ini)+'</div><div style="min-width:0"><div class="lt">'+esc(o.name)+'</div>'+(r.dept?'<div class="ld">'+esc(r.dept)+'</div>':'')+'</div></div>'+(chips?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+chips+'</div>':'')+
-  row('Консультации',esc(r.consult||''))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+
+  row('Консультации и пересдачи',consBlock(r))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+
   '<div style="margin-top:10px"><button class="btn sm adm" data-a="editTeach" data-id="'+(o.rec?o.rec.id:'')+'" data-n="'+esc(o.name)+'">'+(o.rec?'Изменить':'Дополнить данные')+'</button></div></div>';
 }
 function renderTeachers(){
@@ -557,24 +563,67 @@ function renderTeachers(){
   h+=list.length?'<div class="tgrid">'+list.map(teacherH).join('')+'</div>':'<div class="empty"><b>'+(q?'Ничего не найдено':'Преподавателей пока нет')+'</b>'+(q?'Попробуйте другое слово.':'Они появятся сами, когда в занятиях дисциплины будет указан преподаватель.')+'</div>';
   $('main').innerHTML=h;
 }
+var tsel=[],cons=[];
+var CT={'Консультация':'#1f8a4c','Пересдача':'#c8102e','Приём':'#1e88e5','Зачёт':'#e0701a','Другое':'#6b7a8f'};
+var WHEN=[['all','Каждую неделю'],['odd','Нечётные недели'],['even','Чётные недели'],['weeks','Определённые недели'],['date','Конкретная дата']];
+function weeksTxt(str){
+  var n=(String(str||'').match(/\d+/g)||[]);if(!n.length)return '';
+  var a=n.map(function(x){return x+'-я'});
+  if(a.length===1)return a[0]+' неделя';
+  return a.slice(0,-1).join(', ')+' и '+a[a.length-1]+' недели';
+}
+function consBlock(r){
+  var h=(r.consults||[]).map(function(c){
+    var w=c.when==='odd'?'нечётные недели':c.when==='even'?'чётные недели':c.when==='weeks'?weeksTxt(c.weeks):c.when==='date'?(c.date?new Date(c.date+'T00:00').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'}):''):'каждую неделю';
+    var dt=(c.when!=='date'&&c.day!==''&&c.day!==undefined)?DAYS[+c.day]+' ':'';
+    var tm=c.from?(c.from+(c.to?'–'+c.to:'')):'';
+    return '<div class="cons"><span class="cb" style="--c:'+(CT[c.type]||CT['Другое'])+'">'+esc(c.type)+'</span>'+(w?'<b>'+esc(w)+'</b>':'')+((dt||tm)?'<span>'+esc((dt+tm).trim())+'</span>':'')+(c.room?'<span>ауд. '+esc(c.room)+'</span>':'')+(c.note?'<span class="ld">'+esc(c.note)+'</span>':'')+'</div>';
+  }).join('');
+  if(r.consult)h+='<div class="ld" style="margin-top:6px">'+esc(r.consult)+'</div>';
+  return h;
+}
+function teacherOpts(sid,sel){
+  var names=teacherList().filter(function(o){return o.subs[sid]}).map(function(o){return o.name});
+  if(sel&&names.indexOf(sel)<0)names.push(sel);
+  return '<option value="">Не указан</option>'+names.map(function(n){return '<option'+(n===sel?' selected':'')+'>'+esc(n)+'</option>'}).join('');
+}
+function drawPills(){
+  $('pSubs').innerHTML=S.subjects.length?S.subjects.map(function(s){return '<button class="pill'+(tsel.indexOf(s.id)>=0?' on':'')+'" style="--c:'+s.color+'" data-a="tsub" data-id="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span>'+esc(s.name)+'</button>'}).join(''):'<div class="sub">Сначала добавьте дисциплины.</div>';
+}
+function drawCons(){
+  $('consL').innerHTML=cons.length?cons.map(function(c,i){
+    var d=' data-i="'+i+'"';
+    var sel=function(k,opts,val){return '<select data-c="'+k+'"'+d+'>'+opts.map(function(o){return '<option value="'+o[0]+'"'+(String(o[0])===String(val)?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select>'};
+    return '<div class="lrow"><div class="lg"><label>Тип'+sel('type',Object.keys(CT).map(function(k){return [k,k]}),c.type)+'</label><label>Когда'+sel('when',WHEN,c.when)+'</label>'+
+    (c.when==='weeks'?'<label>Номера недель<input data-c="weeks"'+d+' placeholder="13, 17" value="'+esc(c.weeks)+'"></label>':'')+
+    (c.when==='date'?'<label>Дата<input type="date" data-c="date"'+d+' value="'+esc(c.date)+'"></label>':'<label>День'+sel('day',[['','Любой']].concat(DAYF.map(function(n,k){return [k,n]})),c.day)+'</label>')+
+    '<label>Начало<input type="time" data-c="from"'+d+' value="'+esc(c.from)+'"></label><label>Конец<input type="time" data-c="to"'+d+' value="'+esc(c.to)+'"></label></div>'+
+    '<div class="lg" style="grid-template-columns:1fr 1fr"><label>Кабинет<input data-c="room"'+d+' value="'+esc(c.room)+'" placeholder="Например, 8-520"></label><label>Примечание<input data-c="note"'+d+' value="'+esc(c.note)+'" placeholder="Например, по записи"></label></div><button class="btn sm dng" data-a="rmCons"'+d+' style="justify-self:end">Убрать строку</button></div>';
+  }).join(''):'<div class="sub">Строк пока нет. Например: пересдача на 13-й и 17-й неделях.</div>';
+}
 function openTeach(id,name){
   var r=id?S.teachers.find(function(x){return x.id===id}):null;
   ui.editP=r?r.id:null;armed=false;
+  tsel=r?(r.subject_ids||[]).slice():[];
+  cons=r&&r.consults?JSON.parse(JSON.stringify(r.consults)):[];
   var v=function(k){return esc(r?r[k]:'')};
   $('dTeachH').textContent=r?'Данные преподавателя':'Преподаватель';
   $('dTeachB').innerHTML='<label>ФИО<input id="pName" placeholder="Иванова Е. П." value="'+(r?esc(r.name):esc(name||''))+'"></label><div class="sub">Пишите ФИО так же, как в занятиях, тогда карточка свяжется с дисциплинами. Публикуйте только рабочие контакты.</div>'+
   '<label>Кафедра или должность<input id="pDept" placeholder="Например, кафедра высшей математики" value="'+v('dept')+'"></label>'+
+  '<div><div class="vsec">Дисциплины преподавателя</div><div class="pills" id="pSubs"></div><div class="sub" style="margin-top:6px">Дисциплины из занятий добавляются сами, здесь можно добавить остальные.</div></div>'+
   '<div class="r2"><label>Почта<input id="pMail" type="email" inputmode="email" value="'+v('email')+'"></label><label>Телефон<input id="pPhone" type="tel" value="'+v('phone')+'"></label></div>'+
-  '<label>Кабинет<input id="pRoom" placeholder="Например, 3-405" value="'+v('room')+'"></label>'+
-  '<label>Часы консультаций<textarea id="pCons" style="min-height:60px" placeholder="Например, вт 14:00–15:30">'+v('consult')+'</textarea></label>'+
+  '<label>Кабинет<input id="pRoom" placeholder="Например, 8-520" value="'+v('room')+'"></label>'+
+  '<div><div class="vsec">Консультации, пересдачи, приём</div><div id="consL" style="display:grid;gap:10px"></div><button class="btn sm" data-a="addCons" style="margin-top:8px">Добавить строку</button></div>'+
+  '<label>Примечание к приёму<textarea id="pCons" style="min-height:60px" placeholder="Например, писать за день до встречи">'+v('consult')+'</textarea></label>'+
   '<label>Заметки<textarea id="pNotes" style="min-height:60px" placeholder="Как лучше связаться, особенности приёма">'+v('notes')+'</textarea></label>';
+  drawPills();drawCons();
   $('dTeachF').innerHTML=(r?'<button class="btn dng" data-a="delTeach" style="margin-right:auto">Удалить</button>':'')+'<button class="btn" data-a="close" data-t="dTeach">Отмена</button><button class="btn pri" data-a="saveTeach">Сохранить</button>';
   $('dTeach').showModal();
 }
 async function saveTeach(){
   var name=$('pName').value.trim();
   if(!name){$('pName').focus();toast('Введите ФИО');return}
-  var row={name:name,dept:$('pDept').value.trim(),email:$('pMail').value.trim(),phone:$('pPhone').value.trim(),room:$('pRoom').value.trim(),consult:$('pCons').value.trim(),notes:$('pNotes').value.trim()};
+  var row={name:name,dept:$('pDept').value.trim(),email:$('pMail').value.trim(),phone:$('pPhone').value.trim(),room:$('pRoom').value.trim(),consult:$('pCons').value.trim(),notes:$('pNotes').value.trim(),subject_ids:tsel,consults:cons};
   try{
     var r=ui.editP?await sb.from('teachers').update(row).eq('id',ui.editP):await sb.from('teachers').insert(row);
     if(r.error)throw r.error;
@@ -601,7 +650,7 @@ function openView(id){
   (s.lessons||[]).forEach(function(l){if(l.teacher&&teachers.indexOf(l.teacher)<0)teachers.push(l.teacher)});
   $('dViewH').textContent=t.title;
   $('dViewB').innerHTML='<div class="meta" style="margin:0;--c:'+s.color+'"><span class="chip">'+esc(s.name)+'</span><span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+(t.done?'<span class="pr" style="border-color:var(--ok);color:var(--ok)">Выполнено</span>':'')+'</div>'+
-  (teachers.length?'<div><div class="vsec">Преподаватели</div>'+esc(teachers.join(', '))+'</div>':'')+
+  ((t.teacher||teachers.length)?'<div><div class="vsec">'+(t.teacher?'Преподаватель':'Преподаватели')+'</div>'+esc(t.teacher||teachers.join(', '))+'</div>':'')+
   '<div><div class="vsec">Описание</div><div class="vdesc">'+(t.desc?linkify(t.desc):'<span style="color:var(--mut)">Описание не добавлено</span>')+'</div></div>'+
   (fl?'<div><div class="vsec">Файлы</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+fl+'</div></div>':'')+
   (imgs?'<div><div class="vsec">Фото</div><div class="vimgs">'+imgs+'</div></div>':'');
@@ -621,6 +670,7 @@ function openTask(id){
   $('dTaskB').innerHTML='<label>Название<input id="tTitle" placeholder="Например, лабораторная №3" value="'+esc(t?t.title:'')+'"></label>'+
   '<div class="r2"><label>Дисциплина<select id="tSub">'+S.subjects.map(function(s){return '<option value="'+s.id+'"'+(s.id===sid?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></label>'+
   '<label>Приоритет<select id="tPrio"><option value="n">Обычный</option><option value="h"'+(t&&t.prio==='h'?' selected':'')+'>Важно</option><option value="l"'+(t&&t.prio==='l'?' selected':'')+'>Не срочно</option></select></label></div>'+
+  '<label>Преподаватель<select id="tTeach">'+teacherOpts(sid,t?t.teacher:'')+'</select></label>'+
   '<label>Дедлайн<input type="datetime-local" id="tDue" value="'+(t?(t.due||''):toLocal(d))+'"></label>'+
   '<div class="quick"><button class="btn sm" data-a="q" data-id="0">Сегодня</button><button class="btn sm" data-a="q" data-id="1">Завтра</button><button class="btn sm" data-a="q" data-id="3">Через 3 дня</button><button class="btn sm" data-a="q" data-id="7">Через неделю</button><button class="btn sm" data-a="q" data-id="x">Без срока</button></div>'+
   '<label>Описание<textarea id="tDesc" placeholder="Что нужно сделать, номера задач, ссылки">'+esc(t?t.desc:'')+'</textarea></label>'+
@@ -675,7 +725,7 @@ async function saveTask(){
     }
     var old=ui.editT?S.tasks.find(function(x){return x.id===ui.editT}):null;
     var due=$('tDue').value;
-    var row={subject_id:$('tSub').value,title:title,descr:$('tDesc').value.trim(),due:due?new Date(due).toISOString():null,prio:$('tPrio').value,files:out};
+    var row={subject_id:$('tSub').value,title:title,descr:$('tDesc').value.trim(),due:due?new Date(due).toISOString():null,prio:$('tPrio').value,teacher:$('tTeach').value,files:out};
     var r=ui.editT?await sb.from('tasks').update(row).eq('id',ui.editT):await sb.from('tasks').insert(row);
     if(r.error)throw r.error;
     if(old){var keep=out.map(function(x){return x.p});var rm=(old.files||[]).map(function(x){return x.p}).filter(function(p){return p&&keep.indexOf(p)<0});if(rm.length)await bk.remove(rm)}
@@ -749,7 +799,7 @@ document.addEventListener('click',function(e){
   if(a==='none')return;
   if(a==='editTask'&&!ADMIN){openView(id);return}
   if(a==='toggleV'){t=S.tasks.find(function(x){return x.id===id});t.done=!t.done;if(t.done)DONE[id]=1;else delete DONE[id];saveDone();$('dView').close();render();return}
-  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink|newTeach|editTeach|saveTeach|delTeach)$/.test(a))return;
+  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink|newTeach|editTeach|saveTeach|delTeach|addCons|rmCons|tsub)$/.test(a))return;
   if(a==='sub'){ui.sub=id;ui.q='';$('q').value='';render()}
   else if(a==='tab'){ui.tab=id;render()}
   else if(a==='cmo'){ui.cal=new Date(ui.cal.getFullYear(),ui.cal.getMonth()+(+id),1);renderCal()}
@@ -765,6 +815,9 @@ document.addEventListener('click',function(e){
   else if(a==='editTeach')openTeach(id,el.dataset.n);
   else if(a==='saveTeach')saveTeach();
   else if(a==='delTeach')delTeach(el);
+  else if(a==='tsub'){var ix=tsel.indexOf(id);if(ix<0)tsel.push(id);else tsel.splice(ix,1);drawPills()}
+  else if(a==='addCons'){cons.push({type:'Консультация',when:'all',day:'',from:'',to:'',weeks:'',date:'',room:'',note:''});drawCons()}
+  else if(a==='rmCons'){cons.splice(+el.dataset.i,1);drawCons()}
   else if(a==='addLes'){les.push({type:'Лекция',day:0,from:'08:30',to:'10:05',week:'all',teacher:'',room:''});drawLes()}
   else if(a==='rmLes'){les.splice(+el.dataset.i,1);drawLes()}
   else if(a==='newBook')openBook();
@@ -806,6 +859,8 @@ document.addEventListener('change',function(e){
 document.addEventListener('input',function(e){
   var el=e.target;
   if(el.dataset&&el.dataset.l){var l=les[+el.dataset.i];if(l)l[el.dataset.l]=el.dataset.l==='day'?+el.value:el.value}
+  else if(el.dataset&&el.dataset.c!==undefined){var cc=cons[+el.dataset.i];if(cc){cc[el.dataset.c]=el.value;if(el.dataset.c==='when')drawCons()}}
+  else if(el.id==='tSub'){var tt=$('tTeach');if(tt)tt.innerHTML=teacherOpts(el.value,'')}
   else if(el.id==='q'){ui.q=el.value;render()}
   else if(el.id==='cpick'){pickC=el.value;[].forEach.call(document.querySelectorAll('#sw button'),function(b){b.classList.remove('on')});el.parentNode.classList.add('on')}
 });
