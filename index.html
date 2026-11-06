@@ -190,10 +190,6 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .pill.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent);font-weight:600}
 .cons{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:14px;margin-top:6px}
 .cb{font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
-.sline{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:14px;color:var(--mut);margin-bottom:12px}
-.sline b{color:var(--ink);font-size:16px}.sline .bad,.sline .bad b{color:var(--bad)}
-.foot{grid-column:1/-1;text-align:center;margin-top:20px}
-.lnk{border:0;background:none;color:var(--mut);font-size:13px;text-decoration:underline;padding:8px}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -203,13 +199,14 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 <header>
   <div class="brand"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="4" width="10" height="32" rx="1.5" fill="var(--acc)"/><rect x="24" y="4" width="10" height="32" rx="1.5" fill="var(--ok)"/><rect x="15" y="15" width="10" height="10" fill="var(--ink)"/></svg><div><h1>НГТУ НЭТИ</h1><div class="sub" id="today"></div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+    <button class="btn" data-a="theme" aria-label="Сменить тему">Тема</button>
+    <button class="btn" data-a="auth" id="authBtn">Вход</button>
     <button class="btn pri adm" data-a="newTask">Новое задание</button>
   </div>
 </header>
 <div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="books" id="tabB">Литература</button><button data-a="tab" data-id="links" id="tabL">Ссылки</button><button data-a="tab" data-id="teachers" id="tabP">Преподаватели</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
 <aside><div id="cal"></div><div class="navl" id="nav"></div></aside>
 <main id="main"></main>
-<footer class="foot"><button class="lnk" data-a="auth" id="authBtn">Вход для администратора</button></footer>
 </div>
 
 <dialog id="dTask"><div class="dh" id="dTaskH"></div><div class="db" id="dTaskB"></div><div class="df" id="dTaskF"></div></dialog>
@@ -239,10 +236,11 @@ function uid(){return Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 async function load(){
   if(!sb){LOADING=false;return}
-  var R;
-  try{R=await Promise.all([sb.from('subjects').select('*').order('created_at'),sb.from('tasks').select('*'),sb.from('books').select('*').order('created_at',{ascending:false}),sb.from('links').select('*').order('created_at'),sb.from('teachers').select('*').order('name')])}catch(e){R=null}
-  var er={error:{message:'Нет связи с сервером'}};
-  var a=R?R[0]:er,b=R?R[1]:er,c=R?R[2]:er,d=R?R[3]:er,e2=R?R[4]:er;
+  var a=await sb.from('subjects').select('*').order('created_at');
+  var b=await sb.from('tasks').select('*');
+  var c=await sb.from('books').select('*').order('created_at',{ascending:false});
+  var d=await sb.from('links').select('*').order('created_at');
+  var e2=await sb.from('teachers').select('*').order('name');
   LOADING=false;
   if(a.error||b.error||c.error||d.error){
     var cs=null;try{cs=JSON.parse(localStorage.getItem('uchyoba-cache'))}catch(e){}
@@ -317,7 +315,7 @@ function renderMain(){
     h+='<div class="info" style="--c:'+cur.color+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><h2>'+esc(cur.name)+'</h2><button class="btn sm adm" data-a="editSub" data-id="'+cur.id+'">Изменить</button></div><div class="kv">'+
     kv('Контроль',cur.control)+'</div>'+lessonsH(cur)+(cur.notes?'<div class="notes">'+esc(cur.notes)+'</div>':'')+'</div>';
   }
-  h+='<div class="sline"><span><b>'+open.length+'</b> активных</span><span class="'+(over?'bad':'')+'"><b>'+over+'</b> просрочено</span><span><b>'+wk+'</b> на 7 дней</span><span><b>'+pc+'%</b> выполнено</span></div>';
+  h+='<div class="stats"><div class="stat"><b>'+open.length+'</b><span>Активных заданий</span></div><div class="stat"><b style="color:'+(over?'var(--bad)':'inherit')+'">'+over+'</b><span>Просрочено</span></div><div class="stat"><b>'+wk+'</b><span>На ближайшие 7 дней</span></div><div class="stat"><b>'+pc+'%</b><span>Выполнено</span><div class="bar"><i style="width:'+pc+'%"></i></div></div></div>';
   h+='<div class="tools"><div class="seg">'+[['active','Активные'],['done','Выполненные'],['all','Все']].map(function(f){return '<button class="'+(ui.flt===f[0]?'on':'')+'" data-a="flt" data-id="'+f[0]+'">'+f[1]+'</button>'}).join('')+'</div><span class="sp"></span><button class="btn pri adm" data-a="newTask">Добавить задание</button></div>';
   var list=all.filter(function(t){return ui.flt==='all'||(ui.flt==='done'?t.done:!t.done)});
   list.sort(function(a,b){var x=a.due?new Date(a.due):8.6e15,y=b.due?new Date(b.due):8.6e15;return x-y});
@@ -874,7 +872,7 @@ document.addEventListener('drop',function(e){var d=$('drop');if(d&&d.contains(e.
 try{var cs0=JSON.parse(localStorage.getItem('uchyoba-cache'));if(cs0&&cs0.subjects){S={subjects:cs0.subjects,tasks:cs0.tasks||[],books:cs0.books||[],links:cs0.links||[],teachers:cs0.teachers||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADING=false}}catch(e){}
 render();
 $('aPass').addEventListener('keydown',function(e){if(e.key==='Enter')login()});
-if(sb)sb.auth.onAuthStateChange(function(ev,sess){ADMIN=!!sess;document.body.classList.toggle('admin',ADMIN);$('authBtn').textContent=ADMIN?'Выйти из режима администратора':'Вход для администратора';render()});
+if(sb)sb.auth.onAuthStateChange(function(ev,sess){ADMIN=!!sess;document.body.classList.toggle('admin',ADMIN);$('authBtn').textContent=ADMIN?'Выйти':'Вход';render()});
 var tg=window.Telegram&&window.Telegram.WebApp;
 if(tg&&tg.initData){
   tg.ready();tg.expand();
@@ -884,8 +882,7 @@ if(tg&&tg.initData){
 }
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){});
 refresh();
-document.addEventListener('visibilitychange',function(){if(!document.hidden&&!document.querySelector('dialog[open]'))refresh()});
-setInterval(function(){if(!document.hidden&&!document.querySelector('dialog[open]'))refresh()},300000);
+setInterval(function(){if(!document.querySelector('dialog[open]'))refresh()},60000);
 })();
 </script>
 </body>
