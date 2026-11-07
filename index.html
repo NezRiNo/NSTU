@@ -190,6 +190,10 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .pill.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,transparent);font-weight:600}
 .cons{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:14px;margin-top:6px}
 .cb{font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.sline{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:14px;color:var(--mut);margin-bottom:12px}
+.sline b{color:var(--ink);font-size:16px}.sline .bad,.sline .bad b{color:var(--bad)}
+.foot{grid-column:1/-1;text-align:center;margin-top:20px}
+.lnk{border:0;background:none;color:var(--mut);font-size:13px;text-decoration:underline;padding:8px}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -199,8 +203,7 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 <header>
   <div class="brand"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="4" width="10" height="32" rx="1.5" fill="var(--acc)"/><rect x="24" y="4" width="10" height="32" rx="1.5" fill="var(--ok)"/><rect x="15" y="15" width="10" height="10" fill="var(--ink)"/></svg><div><h1>НГТУ НЭТИ</h1><div class="sub" id="today"></div></div></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-    <button class="btn" data-a="theme" aria-label="Сменить тему">Тема</button>
-    <button class="btn" data-a="auth" id="authBtn">Вход</button>
+    <button class="btn" data-a="auth" id="authBtn">Войти</button>
     <button class="btn pri adm" data-a="newTask">Новое задание</button>
   </div>
 </header>
@@ -215,7 +218,7 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 <dialog id="dView"><div class="dh" id="dViewH" style="overflow-wrap:anywhere"></div><div class="db" id="dViewB"></div><div class="df" id="dViewF"></div></dialog>
 <dialog id="dLink"><div class="dh" id="dLinkH"></div><div class="db" id="dLinkB"></div><div class="df" id="dLinkF"></div></dialog>
 <dialog id="dBook"><div class="dh" id="dBookH"></div><div class="db" id="dBookB"></div><div class="df" id="dBookF"></div></dialog>
-<dialog id="dData"><div class="dh">Вход для администратора</div><div class="db"><label>Почта<input id="aEmail" type="email" autocomplete="username"></label><label>Пароль<input id="aPass" type="password" autocomplete="current-password"></label><div id="aErr" style="color:var(--bad);font-size:14px"></div></div><div class="df"><button class="btn" data-a="close" data-t="dData">Отмена</button><button class="btn pri" data-a="login">Войти</button></div></dialog>
+<dialog id="dData"><div class="dh" id="dDataH"></div><div class="db" id="dDataB"></div><div class="df" id="dDataF"></div></dialog>
 <dialog id="lb"><img id="lbi" alt="Вложение"><button class="btn" data-a="close" data-t="lb">Закрыть</button></dialog>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -226,9 +229,13 @@ var COLORS=['#c8102e','#e0457b','#d6492b','#e0701a','#e0a81e','#a3b81f','#6aa84f
 var SB_URL='https://pvmzyispfthecczgnntb.supabase.co';
 var SB_KEY='sb_publishable_e5D6HGi0xMIBgZ0z2hM3mg_BsJYJTrm';
 var sb=(SB_URL.indexOf('YOUR-')<0&&window.supabase)?window.supabase.createClient(SB_URL,SB_KEY):null;
-var ADMIN=false,LOADING=true,LOADERR='',DONE={};
+var AUTH_DOMAIN='example.com';   // служебный домен для ников (письма на него не отправляются)
+var ADMIN=false,LOADING=true,LOADERR='',DONE={},USER=null,NOTES={},amode='in',tmPush=null,MERGE=false;
 try{DONE=JSON.parse(localStorage.getItem('uchyoba-done')||'{}')}catch(e){}
-function saveDone(){try{localStorage.setItem('uchyoba-done',JSON.stringify(DONE))}catch(e){}}
+function saveDone(){
+  if(USER&&sb){clearTimeout(tmPush);tmPush=setTimeout(pushState,500);return}
+  try{localStorage.setItem('uchyoba-done',JSON.stringify(DONE))}catch(e){}
+}
 var S={subjects:[],tasks:[],books:[],links:[],teachers:[]};
 var ui={sub:'all',flt:'active',tab:'tasks',q:'',editT:null,editS:null,editB:null};
 var $=function(i){return document.getElementById(i)};
@@ -236,11 +243,10 @@ function uid(){return Math.random().toString(36).slice(2,10)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 async function load(){
   if(!sb){LOADING=false;return}
-  var a=await sb.from('subjects').select('*').order('created_at');
-  var b=await sb.from('tasks').select('*');
-  var c=await sb.from('books').select('*').order('created_at',{ascending:false});
-  var d=await sb.from('links').select('*').order('created_at');
-  var e2=await sb.from('teachers').select('*').order('name');
+  var R;
+  try{R=await Promise.all([sb.from('subjects').select('*').order('created_at'),sb.from('tasks').select('*'),sb.from('books').select('*').order('created_at',{ascending:false}),sb.from('links').select('*').order('created_at'),sb.from('teachers').select('*').order('name')])}catch(e){R=null}
+  var er={error:{message:'Нет связи с сервером'}};
+  var a=R?R[0]:er,b=R?R[1]:er,c=R?R[2]:er,d=R?R[3]:er,e2=R?R[4]:er;
   LOADING=false;
   if(a.error||b.error||c.error||d.error){
     var cs=null;try{cs=JSON.parse(localStorage.getItem('uchyoba-cache'))}catch(e){}
@@ -315,7 +321,7 @@ function renderMain(){
     h+='<div class="info" style="--c:'+cur.color+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><h2>'+esc(cur.name)+'</h2><button class="btn sm adm" data-a="editSub" data-id="'+cur.id+'">Изменить</button></div><div class="kv">'+
     kv('Контроль',cur.control)+'</div>'+lessonsH(cur)+(cur.notes?'<div class="notes">'+esc(cur.notes)+'</div>':'')+'</div>';
   }
-  h+='<div class="stats"><div class="stat"><b>'+open.length+'</b><span>Активных заданий</span></div><div class="stat"><b style="color:'+(over?'var(--bad)':'inherit')+'">'+over+'</b><span>Просрочено</span></div><div class="stat"><b>'+wk+'</b><span>На ближайшие 7 дней</span></div><div class="stat"><b>'+pc+'%</b><span>Выполнено</span><div class="bar"><i style="width:'+pc+'%"></i></div></div></div>';
+  h+='<div class="sline"><span><b>'+open.length+'</b> активных</span><span class="'+(over?'bad':'')+'"><b>'+over+'</b> просрочено</span><span><b>'+wk+'</b> на 7 дней</span><span><b>'+pc+'%</b> выполнено</span></div>';
   h+='<div class="tools"><div class="seg">'+[['active','Активные'],['done','Выполненные'],['all','Все']].map(function(f){return '<button class="'+(ui.flt===f[0]?'on':'')+'" data-a="flt" data-id="'+f[0]+'">'+f[1]+'</button>'}).join('')+'</div><span class="sp"></span><button class="btn pri adm" data-a="newTask">Добавить задание</button></div>';
   var list=all.filter(function(t){return ui.flt==='all'||(ui.flt==='done'?t.done:!t.done)});
   list.sort(function(a,b){var x=a.due?new Date(a.due):8.6e15,y=b.due?new Date(b.due):8.6e15;return x-y});
@@ -340,7 +346,7 @@ function taskH(t,di){
     else fl+='<a class="file" href="'+f.d+'" download="'+esc(f.n)+'" data-a="none">'+esc(f.n)+'</a>';
   });
   return '<div class="task'+(t.done?' done':'')+'" style="--c:'+s.color+'"><button class="chk" data-a="toggle" data-id="'+t.id+'" aria-label="Отметить выполненным">'+(t.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3 3 7-7" stroke="#fff" stroke-width="2" fill="none"/></svg>':'')+'</button>'+
-  '<div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="tt">'+esc(t.title)+'</div><div class="meta"><span class="chip">'+esc(s.name)+'</span>'+(t.teacher?'<span>'+esc(t.teacher)+'</span>':'')+'<span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div>';
+  '<div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="tt">'+esc(t.title)+'</div><div class="meta"><span class="chip">'+esc(s.name)+'</span>'+(t.teacher?'<span>'+esc(t.teacher)+'</span>':'')+(NOTES[t.id]?'<span class="pr">Заметка</span>':'')+'<span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div>';
 }
 
 /* ---------- занятия, поиск, литература ---------- */
@@ -648,12 +654,14 @@ function openView(id){
     else fl+='<a class="file" href="'+esc(f.d)+'" target="_blank" rel="noopener noreferrer">'+esc(f.n)+'</a> ';
   });
   (s.lessons||[]).forEach(function(l){if(l.teacher&&teachers.indexOf(l.teacher)<0)teachers.push(l.teacher)});
+  ui.viewId=t.id;
+  var noteH=USER?'<div><div class="vsec">Моя заметка (видна на сайте только вам)</div><textarea id="vNote" maxlength="2000" style="min-height:70px" placeholder="Например, начал, осталась задача 4">'+esc(NOTES[t.id]||'')+'</textarea></div>':'<div class="sub">Чтобы вести личные заметки и хранить отметки на всех устройствах, <button class="lnk" data-a="auth" style="padding:0">войдите или создайте кабинет</button>.</div>';
   $('dViewH').textContent=t.title;
   $('dViewB').innerHTML='<div class="meta" style="margin:0;--c:'+s.color+'"><span class="chip">'+esc(s.name)+'</span><span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+(t.done?'<span class="pr" style="border-color:var(--ok);color:var(--ok)">Выполнено</span>':'')+'</div>'+
   ((t.teacher||teachers.length)?'<div><div class="vsec">'+(t.teacher?'Преподаватель':'Преподаватели')+'</div>'+esc(t.teacher||teachers.join(', '))+'</div>':'')+
   '<div><div class="vsec">Описание</div><div class="vdesc">'+(t.desc?linkify(t.desc):'<span style="color:var(--mut)">Описание не добавлено</span>')+'</div></div>'+
   (fl?'<div><div class="vsec">Файлы</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+fl+'</div></div>':'')+
-  (imgs?'<div><div class="vsec">Фото</div><div class="vimgs">'+imgs+'</div></div>':'');
+  (imgs?'<div><div class="vsec">Фото</div><div class="vimgs">'+imgs+'</div></div>':'')+noteH;
   $('dViewF').innerHTML='<button class="btn" data-a="close" data-t="dView">Закрыть</button><button class="btn pri" data-a="toggleV" data-id="'+t.id+'">'+(t.done?'Вернуть в активные':'Отметить выполненным')+'</button>';
   $('dView').showModal();
 }
@@ -785,11 +793,104 @@ async function delSub(el){
     ui.sub='all';$('dSub').close();await load();render();
   }catch(e){toast('Ошибка: '+(e.message||e))}
 }
-async function login(){
-  $('aErr').textContent='';
-  var r=await sb.auth.signInWithPassword({email:$('aEmail').value.trim(),password:$('aPass').value});
-  if(r.error){var m=String(r.error.message||'');$('aErr').textContent=/fetch|network|clone/i.test(m)?'Нет связи с базой. Откройте сайт по обычной ссылке (Netlify) или файлом на компьютере, а не в окне предпросмотра.':(/confirm/i.test(m)?'Почта не подтверждена: в Supabase у пользователя нужен Auto Confirm.':'Неверная почта или пароль')+' ['+m+']';return}
-  $('aPass').value='';$('dData').close();
+function aerr(m){var e=$('aErr');if(e)e.textContent=m||''}
+function amsgs(m){var e=$('aMsg');if(e)e.textContent=m||''}
+function toEmail(v){v=String(v||'').trim().toLowerCase();return v.indexOf('@')>=0?v:v+'@'+AUTH_DOMAIN}
+function shownName(u){var e=(u&&u.email)||'';var p=e.split('@');return p[1]===AUTH_DOMAIN?p[0]:e}
+function accOpen(mode){if(mode)amode=mode;armed=false;drawAcc();if(!$('dData').open)$('dData').showModal()}
+function drawAcc(){
+  var H=$('dDataH'),B=$('dDataB'),F=$('dDataF');
+  var cancel='<button class="btn" data-a="close" data-t="dData">Закрыть</button>';
+  var msgs='<div id="aErr" style="color:var(--bad);font-size:14px"></div><div id="aMsg" style="color:var(--ok);font-size:14px"></div>';
+  if(amode==='reset'&&USER){
+    H.textContent='Смена пароля';
+    B.innerHTML='<label>Новый пароль (не короче 8 символов)<input id="aPass" type="password" autocomplete="new-password"></label>'+msgs;
+    F.innerHTML=cancel+'<button class="btn pri" data-a="dosetpw">Сохранить</button>';return;
+  }
+  if(USER){
+    H.textContent='Личный кабинет';
+    B.innerHTML='<div><div class="vsec">Ник</div>'+esc(shownName(USER))+(ADMIN?' <span class="pr h">Администратор</span>':'')+'</div><div class="sub">Отметки «выполнено» и личные заметки хранятся в защищённой базе и видны на сайте только вам. Они доступны на всех ваших устройствах.</div>'+
+    (ADMIN?'<div style="border-top:1px solid var(--line);padding-top:12px;display:grid;gap:10px"><div class="vsec">Сброс пароля студента</div><div class="r2"><label>Ник<input id="aNick2" autocomplete="off"></label><label>Новый пароль<input id="aPass2" type="text" autocomplete="off"></label></div><button class="btn sm" data-a="admreset" style="justify-self:start">Поставить пароль</button></div>':'')+msgs;
+    F.innerHTML=(ADMIN?'':'<button class="btn dng" data-a="delacc" style="margin-right:auto">Удалить аккаунт</button>')+'<button class="btn" data-a="chpw">Сменить пароль</button><button class="btn pri" data-a="logout">Выйти</button>';return;
+  }
+  var v0=$('aNick')?$('aNick').value:'';
+  H.textContent=amode==='up'?'Создать кабинет':'Вход в кабинет';
+  B.innerHTML='<div class="seg" style="display:flex"><button class="'+(amode==='in'?'on':'')+'" data-a="amode" data-id="in" style="flex:1">Вход</button><button class="'+(amode==='up'?'on':'')+'" data-a="amode" data-id="up" style="flex:1">Регистрация</button></div>'+
+  '<label>Ник<input id="aNick" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="'+(amode==='up'?'Например, fox_2026':'Ваш ник')+'" value="'+esc(v0)+'"></label>'+
+  (amode==='up'?'<div class="sub">3–20 символов: латиница, цифры, _ и -. Придумайте ник без имени и фамилии: почта и телефон не нужны.</div>':'')+
+  '<label>Пароль'+(amode==='up'?' (не короче 8 символов)':'')+'<input id="aPass" type="password" autocomplete="'+(amode==='up'?'new-password':'current-password')+'"></label>'+
+  (amode==='up'?'<div class="sub">Запомните пароль: восстановить его по почте нельзя. Если забудете, напишите администратору, он поставит новый.</div>':'')+msgs;
+  F.innerHTML=cancel+'<button class="btn pri" data-a="'+(amode==='up'?'doup':'doin')+'">'+(amode==='up'?'Создать кабинет':'Войти')+'</button>';
+}
+function submitAuth(){if(amode==='reset'&&USER)doSetPw();else if(amode==='up')doUp();else doIn()}
+function mapErr(m){
+  m=String(m||'');
+  if(/invalid login/i.test(m))return 'Неверный ник или пароль';
+  if(/already|registered/i.test(m))return 'Этот ник уже занят';
+  if(/rate|limit|too many/i.test(m))return 'Слишком много попыток, попробуйте чуть позже.';
+  if(/fetch|network/i.test(m))return 'Нет связи с сервером. Откройте сайт по обычной ссылке.';
+  if(/email/i.test(m)&&/invalid/i.test(m))return 'Сервер не принял служебный адрес. Сообщите администратору.';
+  if(/password/i.test(m)&&/short|least|weak/i.test(m))return 'Пароль слишком простой или короткий.';
+  return m;
+}
+async function doIn(){
+  aerr('');var v=$('aNick').value.trim(),pw=$('aPass').value;
+  if(!v||!pw){aerr('Введите ник и пароль');return}
+  MERGE=true;
+  var r=await sb.auth.signInWithPassword({email:toEmail(v),password:pw});
+  if(r.error){MERGE=false;aerr(mapErr(r.error.message));return}
+  $('dData').close();
+}
+async function doUp(){
+  aerr('');amsgs('');var v=$('aNick').value.trim(),pw=$('aPass').value;
+  if(!/^[a-z0-9_-]{3,20}$/i.test(v)){aerr('Ник: 3–20 символов, латиница, цифры, _ и -');return}
+  if(pw.length<8){aerr('Пароль должен быть не короче 8 символов');return}
+  MERGE=true;
+  var r=await sb.auth.signUp({email:toEmail(v),password:pw});
+  if(r.error){MERGE=false;aerr(mapErr(r.error.message));return}
+  if(r.data&&r.data.session){$('dData').close();return}
+  MERGE=false;aerr('В Supabase включено подтверждение почты. Его нужно выключить: Authentication, Sign In / Providers, Email.');
+}
+async function doSetPw(){
+  aerr('');amsgs('');var pw=$('aPass').value;
+  if(pw.length<8){aerr('Пароль должен быть не короче 8 символов');return}
+  var r=await sb.auth.updateUser({password:pw});
+  if(r.error){aerr(mapErr(r.error.message));return}
+  amode='in';$('dData').close();toast('Пароль изменён');
+}
+async function admReset(){
+  aerr('');amsgs('');var n=$('aNick2').value.trim(),p=$('aPass2').value;
+  if(!n||p.length<8){aerr('Введите ник и пароль не короче 8 символов');return}
+  var r=await sb.rpc('admin_set_password',{p_nick:n,p_password:p});
+  if(r.error){aerr(/not found/i.test(r.error.message)?'Такого ника нет':r.error.message);return}
+  amsgs('Пароль для «'+n+'» изменён. Передайте его студенту лично.');$('aPass2').value='';
+}
+async function pushState(){
+  if(!USER||!sb)return;
+  var row={user_id:USER.id,done:DONE,notes:NOTES,updated_at:new Date().toISOString()};
+  var c=USER.user_metadata&&USER.user_metadata.consent_at;if(c)row.consent_at=c;
+  var r=await sb.from('user_state').upsert(row);
+  if(r.error)toast('Не удалось сохранить в кабинете');
+}
+async function loadMine(){
+  if(!USER||!sb)return;
+  var r=await sb.from('user_state').select('done,notes').eq('user_id',USER.id).maybeSingle();
+  if(r.error)return;
+  var srv=(r.data&&r.data.done)||{};
+  if(MERGE){DONE=Object.assign({},DONE,srv);try{localStorage.removeItem('uchyoba-done')}catch(e){}MERGE=false}
+  else DONE=Object.assign({},srv);
+  NOTES=(r.data&&r.data.notes)||{};
+  if(!r.data||Object.keys(DONE).length!==Object.keys(srv).length)pushState();
+}
+async function afterAuth(){
+  ADMIN=false;
+  if(USER&&sb){var r=await sb.rpc('is_admin');ADMIN=!!(r&&!r.error&&r.data===true)}
+  document.body.classList.toggle('admin',ADMIN);
+  $('authBtn').textContent=USER?'Кабинет':'Войти';
+  await loadMine();
+  S.tasks.forEach(function(t){t.done=!!DONE[t.id]});
+  render();
+  if($('dData').open&&amode!=='reset')drawAcc();
 }
 async function refresh(){await load();render()}
 /* ---------- события ---------- */
@@ -843,8 +944,19 @@ document.addEventListener('click',function(e){
   else if(a==='delTask')delTask(el);
   else if(a==='delSub')delSub(el);
   else if(a==='theme'){var r=document.documentElement,dk=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dk?'light':'dark';setTC()}
-  else if(a==='auth'){if(ADMIN&&sb)sb.auth.signOut();else{$('aErr').textContent='';$('dData').showModal()}}
-  else if(a==='login')login();
+  else if(a==='auth'){if(sb){if(!USER&&amode==='reset')amode='in';accOpen()}}
+  else if(a==='amode'){amode=id;drawAcc()}
+  else if(a==='doin')doIn();
+  else if(a==='doup')doUp();
+  else if(a==='dosetpw')doSetPw();
+  else if(a==='chpw'){amode='reset';drawAcc()}
+  else if(a==='admreset')admReset();
+  else if(a==='logout'){sb.auth.signOut();$('dData').close()}
+  else if(a==='delacc'){
+    if(!armed){armed=true;el.textContent='Точно удалить аккаунт и данные?';return}
+    armed=false;
+    sb.rpc('delete_my_account').then(function(r){if(r.error){toast('Не удалось удалить: '+r.error.message);return}sb.auth.signOut();$('dData').close();toast('Аккаунт удалён')});
+  }
 });
 document.addEventListener('change',function(e){
   if(e.target.id==='tFile'){addFiles(e.target.files);e.target.value=''}
@@ -861,6 +973,7 @@ document.addEventListener('input',function(e){
   if(el.dataset&&el.dataset.l){var l=les[+el.dataset.i];if(l)l[el.dataset.l]=el.dataset.l==='day'?+el.value:el.value}
   else if(el.dataset&&el.dataset.c!==undefined){var cc=cons[+el.dataset.i];if(cc){cc[el.dataset.c]=el.value;if(el.dataset.c==='when')drawCons()}}
   else if(el.id==='tSub'){var tt=$('tTeach');if(tt)tt.innerHTML=teacherOpts(el.value,'')}
+  else if(el.id==='vNote'){if(el.value.trim())NOTES[ui.viewId]=el.value;else delete NOTES[ui.viewId];saveDone()}
   else if(el.id==='q'){ui.q=el.value;render()}
   else if(el.id==='cpick'){pickC=el.value;[].forEach.call(document.querySelectorAll('#sw button'),function(b){b.classList.remove('on')});el.parentNode.classList.add('on')}
 });
@@ -871,8 +984,15 @@ document.addEventListener('drop',function(e){var d=$('drop');if(d&&d.contains(e.
 ['dTask','dSub','dBook','dLink','dTeach','dView','dData','lb'].forEach(function(i){$(i).addEventListener('click',function(e){if(e.target===this)this.close()})});
 try{var cs0=JSON.parse(localStorage.getItem('uchyoba-cache'));if(cs0&&cs0.subjects){S={subjects:cs0.subjects,tasks:cs0.tasks||[],books:cs0.books||[],links:cs0.links||[],teachers:cs0.teachers||[]};S.tasks.forEach(function(t){t.done=!!DONE[t.id]});LOADING=false}}catch(e){}
 render();
-$('aPass').addEventListener('keydown',function(e){if(e.key==='Enter')login()});
-if(sb)sb.auth.onAuthStateChange(function(ev,sess){ADMIN=!!sess;document.body.classList.toggle('admin',ADMIN);$('authBtn').textContent=ADMIN?'Выйти':'Вход';render()});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&/^(aNick|aPass)$/.test(e.target.id)){e.preventDefault();submitAuth()}});
+$('dView').addEventListener('close',function(){render()});
+if(sb)sb.auth.onAuthStateChange(function(ev,sess){
+  if(ev==='TOKEN_REFRESHED'){USER=sess?sess.user:USER;return}
+  USER=sess?sess.user:null;
+  if(ev==='SIGNED_OUT'){DONE={};NOTES={};ADMIN=false;try{localStorage.removeItem('uchyoba-done')}catch(e){}}
+  if(ev==='PASSWORD_RECOVERY')amode='reset';
+  setTimeout(function(){afterAuth().then(function(){if(ev==='PASSWORD_RECOVERY')accOpen('reset')})},0);
+});
 var tg=window.Telegram&&window.Telegram.WebApp;
 if(tg&&tg.initData){
   tg.ready();tg.expand();
@@ -882,7 +1002,8 @@ if(tg&&tg.initData){
 }
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){});
 refresh();
-setInterval(function(){if(!document.querySelector('dialog[open]'))refresh()},60000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&!document.querySelector('dialog[open]'))refresh()});
+setInterval(function(){if(!document.hidden&&!document.querySelector('dialog[open]'))refresh()},300000);
 })();
 </script>
 </body>
