@@ -205,6 +205,9 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .dots{height:7px}.dots .rg{width:7px;height:7px;box-sizing:border-box;border:2px solid var(--c);background:transparent}
 #dEv{width:min(680px,94vw)}
 @media (max-width:820px){.srow .seg{overflow-x:auto;-webkit-overflow-scrolling:touch}.srow .seg button{flex:1 0 auto;padding:9px 12px}}
+.grip{display:none;cursor:grab;touch-action:none;color:var(--mut);padding:0 2px;font-size:15px;line-height:1;user-select:none;letter-spacing:-3px}
+body.admin .grip{display:inline-block}
+.nav.drag{opacity:.7;box-shadow:0 6px 20px rgba(0,0,0,.25);border-color:var(--acc)}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -219,7 +222,7 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
     <button class="btn pri adm" data-a="newTask">Новое задание</button>
   </div>
 </header>
-<div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="books" id="tabB">Литература</button><button data-a="tab" data-id="links" id="tabL">Ссылки</button><button data-a="tab" data-id="teachers" id="tabP">Преподаватели</button><button data-a="tab" data-id="events" id="tabE">Афиша</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
+<div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="mat" id="tabB">Материалы</button><button data-a="tab" data-id="teachers" id="tabP">Преподаватели</button><button data-a="tab" data-id="events" id="tabE">Афиша</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
 <aside><div id="cal"></div><div class="navl" id="nav"></div></aside>
 <main id="main"></main>
 </div>
@@ -268,7 +271,7 @@ async function load(){
   }
   window._off=0;
   LOADERR='';
-  S.subjects=a.data.map(function(r){return {id:r.id,name:r.name,color:r.color,control:r.control,notes:r.notes,lessons:r.lessons||[]}});
+  S.subjects=a.data.map(function(r){return {id:r.id,name:r.name,color:r.color,control:r.control,notes:r.notes,lessons:r.lessons||[],position:r.position||0}}).sort(function(x,y){return x.position-y.position});
   S.tasks=b.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,teacher:r.teacher||'',done:!!DONE[r.id],files:r.files||[]}});
   S.books=c.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,author:r.author,kind:r.kind,file:r.file||{}}});
   S.links=d.data.map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,url:r.url,desc:r.descr,cat:r.category}});
@@ -307,7 +310,7 @@ function renderNav(){
   var od=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)<new Date()}).length;
   var h='<button class="nav'+(ui.sub==='all'?' on':'')+'" data-a="sub" data-id="all"><span class="dot" style="background:var(--ink)"></span><span class="nm">Все дисциплины</span>'+(od&&ui.tab==='tasks'?'<span class="cnt bad" title="Просрочено">'+od+'</span>':'<span class="cnt">'+navCnt('all')+'</span>')+'</button>';
   S.subjects.forEach(function(s){
-    h+='<button class="nav'+(ui.sub===s.id?' on':'')+'" data-a="sub" data-id="'+s.id+'"><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span><span class="cnt">'+navCnt(s.id)+'</span></button>';
+    h+='<button class="nav'+(ui.sub===s.id?' on':'')+'" data-a="sub" data-id="'+s.id+'"><span class="grip" title="Перетащить, чтобы изменить порядок">⋮⋮</span><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span><span class="cnt">'+navCnt(s.id)+'</span></button>';
   });
   h+='<button class="btn adm" data-a="newSub" style="margin-top:6px;flex:none">Добавить дисциплину</button>';
   $('nav').innerHTML=h;
@@ -336,7 +339,7 @@ function renderMain(){
     h+='<div class="info" style="--c:'+cur.color+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><h2>'+esc(cur.name)+'</h2><button class="btn sm adm" data-a="editSub" data-id="'+cur.id+'">Изменить</button></div><div class="kv">'+
     kv('Контроль',cur.control)+'</div>'+lessonsH(cur)+(cur.notes?'<div class="notes">'+esc(cur.notes)+'</div>':'')+'</div>';
   }
-  h+=bannerH();h+='<div class="sline"><span class="sc"><i class="sd" style="background:var(--ink)"></i><b>'+open.length+'</b> активных</span><span class="sc'+(over?' bad':' dim')+'"><i class="sd" style="background:var(--bad)"></i><b>'+over+'</b> просрочено</span><span class="sc"><i class="sd" style="background:#1e88e5"></i><b>'+wk+'</b> на 7 дней</span><span class="sc"><i class="sd" style="background:var(--ok)"></i><b>'+pc+'%</b> выполнено</span></div>';
+  h+=bannerH();h+='<div class="sline"><span class="sc"><i class="sd" style="background:var(--ink)"></i><b>'+open.length+'</b> активных</span><span class="sc'+(over?' bad':' dim')+'"><i class="sd" style="background:var(--bad)"></i><b>'+over+'</b> просрочено</span><span class="sc"><i class="sd" style="background:#1e88e5"></i><b>'+wk+'</b> на 7 дней</span></div>';
   h+='<div class="tools"><div class="seg">'+[['active','Активные'],['done','Выполненные'],['all','Все']].map(function(f){return '<button class="'+(ui.flt===f[0]?'on':'')+'" data-a="flt" data-id="'+f[0]+'">'+f[1]+'</button>'}).join('')+'</div><span class="sp"></span><button class="btn pri adm" data-a="newTask">Добавить задание</button></div>';
   var list=all.filter(function(t){return ui.flt==='all'||(ui.flt==='done'?t.done:!t.done)});
   list.sort(function(a,b){var x=a.due?new Date(a.due):8.6e15,y=b.due?new Date(b.due):8.6e15;return x-y});
@@ -379,7 +382,7 @@ function lessonsH(s){
 function hs(s){return (s.name+' '+(s.control||'')+' '+(s.notes||'')+' '+(s.lessons||[]).map(function(l){return l.type+' '+l.teacher+' '+l.room}).join(' ')).toLowerCase()}
 function mb(n){return (n/1048576).toFixed(1).replace('.',',')+' МБ'}
 function syncTabs(){
-  $('tabT').className=ui.tab==='tasks'?'on':'';$('tabB').className=ui.tab==='books'?'on':'';$('tabL').className=ui.tab==='links'?'on':'';$('tabP').className=ui.tab==='teachers'?'on':'';$('tabE').className=ui.tab==='events'?'on':'';
+  $('tabT').className=ui.tab==='tasks'?'on':'';$('tabB').className=(ui.tab==='books'||ui.tab==='links')?'on':'';$('tabP').className=ui.tab==='teachers'?'on':'';$('tabE').className=ui.tab==='events'?'on':'';
   $('q').placeholder=ui.tab==='books'?'Поиск по литературе: название, автор, дисциплина':ui.tab==='links'?'Поиск по ссылкам':ui.tab==='teachers'?'Поиск по преподавателям':ui.tab==='events'?'Поиск по афише':'Поиск по заданиям и дисциплинам';
 }
 function bookMatch(b,q){var s=subj(b.sid);return (b.title+' '+b.author+' '+b.kind+' '+(s?s.name:'')).toLowerCase().indexOf(q)>=0}
@@ -408,7 +411,7 @@ function bookH(b){
 function renderBooks(){
   var cur=ui.sub==='all'?null:subj(ui.sub),q=ui.q.toLowerCase().trim();
   var list=S.books.filter(function(b){return (!cur||b.sid===cur.id)&&(!q||bookMatch(b,q))});
-  var h='<div class="tools"><b>'+(cur?esc(cur.name):'Вся литература')+'</b><span class="sub">'+list.length+' шт.</span><span class="sp"></span><button class="btn pri adm" data-a="newBook">Добавить книгу</button></div>';
+  var h=matSeg()+'<div class="tools"><b>'+(cur?esc(cur.name):'Вся литература')+'</b><span class="sub">'+list.length+' шт.</span><span class="sp"></span><button class="btn pri adm" data-a="newBook">Добавить книгу</button></div>';
   h+=list.length?list.map(bookH).join(''):'<div class="empty"><b>'+(q?'Ничего не найдено':'Литературы пока нет')+'</b>'+(q?'Попробуйте другое слово.':'Здесь будут учебники и методички в PDF.')+'</div>';
   $('main').innerHTML=h;
 }
@@ -519,7 +522,7 @@ function linkH(l){
 function renderLinks(){
   var cur=ui.sub==='all'?null:subj(ui.sub),q=ui.q.toLowerCase().trim();
   var list=S.links.filter(function(l){return (!cur||l.sid===cur.id||!l.sid)&&(!q||linkMatch(l,q))});
-  var h='<div class="tools"><b>'+(cur?esc(cur.name):'Все ссылки')+'</b><span class="sub">'+list.length+' шт.</span><span class="sp"></span><button class="btn pri adm" data-a="newLink">Добавить ссылку</button></div>';
+  var h=matSeg()+'<div class="tools"><b>'+(cur?esc(cur.name):'Все ссылки')+'</b><span class="sub">'+list.length+' шт.</span><span class="sp"></span><button class="btn pri adm" data-a="newLink">Добавить ссылку</button></div>';
   if(!list.length){$('main').innerHTML=h+'<div class="empty"><b>'+(q?'Ничего не найдено':'Ссылок пока нет')+'</b>'+(q?'Попробуйте другое слово.':'Здесь будут полезные ресурсы: расписание, библиотека, курсы, чаты.')+'</div>';return}
   var g={},order=[];
   list.forEach(function(l){var k=l.cat||'Прочее';if(!g[k]){g[k]=[];order.push(k)}g[k].push(l)});
@@ -661,6 +664,41 @@ async function delTeach(el){
   armed=false;
   try{var r=await sb.from('teachers').delete().eq('id',ui.editP);if(r.error)throw r.error;$('dTeach').close();await load();render()}
   catch(e){toast('Ошибка: '+(e.message||e))}
+}
+
+/* ---------- порядок дисциплин и материалы ---------- */
+function matSeg(){return '<div class="tools" style="margin-bottom:6px"><div class="seg"><button class="'+(ui.tab==='books'?'on':'')+'" data-a="tab" data-id="books">Литература</button><button class="'+(ui.tab==='links'?'on':'')+'" data-a="tab" data-id="links">Ссылки</button></div></div>'}
+var drag=null;
+document.addEventListener('pointerdown',function(e){
+  var g=e.target.closest&&e.target.closest('.grip');if(!g||!ADMIN)return;
+  var item=g.closest('.nav');if(!item)return;
+  e.preventDefault();drag={item:item,box:$('nav')};item.classList.add('drag');
+  try{g.setPointerCapture(e.pointerId)}catch(x){}
+});
+document.addEventListener('pointermove',function(e){
+  if(!drag)return;
+  var box=drag.box,horiz=getComputedStyle(box).flexDirection==='row',pos=horiz?e.clientX:e.clientY;
+  var items=[].slice.call(box.querySelectorAll('.nav[data-id]')).filter(function(x){return x!==drag.item&&x.dataset.id!=='all'});
+  var before=null;
+  for(var i=0;i<items.length;i++){var r=items[i].getBoundingClientRect(),mid=horiz?r.left+r.width/2:r.top+r.height/2;if(pos<mid){before=items[i];break}}
+  box.insertBefore(drag.item,before||box.querySelector('[data-a="newSub"]'));
+});
+function endDrag(){
+  if(!drag)return;var d=drag;drag=null;d.item.classList.remove('drag');
+  var ids=[].map.call(d.box.querySelectorAll('.nav[data-id]'),function(x){return x.dataset.id}).filter(function(x){return x!=='all'});
+  saveOrder(ids);
+}
+document.addEventListener('pointerup',endDrag);
+document.addEventListener('pointercancel',endDrag);
+async function saveOrder(ids){
+  ids.forEach(function(id,i){var s=subj(id);if(s)s.position=i});
+  S.subjects.sort(function(a,b){return a.position-b.position});
+  try{
+    var rs=await Promise.all(ids.map(function(id,i){return sb.from('subjects').update({position:i}).eq('id',id)}));
+    var er=rs.find(function(r){return r.error});if(er)throw er.error;
+    toast('Порядок сохранён');
+  }catch(e){toast('Не удалось сохранить порядок: '+(e.message||e))}
+  render();
 }
 
 /* ---------- афиша ---------- */
@@ -904,6 +942,7 @@ async function saveSub(){
   if(!n){$('sName').focus();toast('Введите название дисциплины');return}
   var o={name:n,control:$('sCtl').value.trim(),notes:$('sNotes').value.trim(),color:pickC,lessons:les};
   try{
+    if(!ui.editS)o.position=S.subjects.reduce(function(m,x){return Math.max(m,x.position||0)},-1)+1;
     var r=ui.editS?await sb.from('subjects').update(o).eq('id',ui.editS):await sb.from('subjects').insert(o).select();
     if(r.error)throw r.error;
     if(!ui.editS&&r.data&&r.data[0])ui.sub=r.data[0].id;
@@ -1035,6 +1074,7 @@ async function afterAuth(){
 async function refresh(){await load();render()}
 /* ---------- события ---------- */
 document.addEventListener('click',function(e){
+  if(e.target.closest('.grip'))return;
   var el=e.target.closest('[data-a]');if(!el)return;
   var a=el.dataset.a,id=el.dataset.id,t;
   if(a==='none')return;
@@ -1043,7 +1083,7 @@ document.addEventListener('click',function(e){
   if(a==='toggleV'){t=S.tasks.find(function(x){return x.id===id});t.done=!t.done;if(t.done)DONE[id]=1;else delete DONE[id];saveDone();$('dView').close();render();return}
   if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink|newTeach|editTeach|saveTeach|delTeach|addCons|rmCons|tsub|newEv|editEv|saveEv|delEv|rmEF)$/.test(a))return;
   if(a==='sub'){ui.sub=id;ui.q='';$('q').value='';render()}
-  else if(a==='tab'){ui.tab=id;render()}
+  else if(a==='tab'){ui.tab=id==='mat'?(ui.lastMat||'books'):id;if(ui.tab==='books'||ui.tab==='links')ui.lastMat=ui.tab;render()}
   else if(a==='cmo'){ui.cal=new Date(ui.cal.getFullYear(),ui.cal.getMonth()+(+id),1);renderCal()}
   else if(a==='ctog'){ui.calOpen=!(ui.calOpen===undefined?!matchMedia('(max-width:820px)').matches:ui.calOpen);renderCal()}
   else if(a==='day'){if(matchMedia('(max-width:820px)').matches)ui.calOpen=false;ui.day=ui.day===id?'':id;ui.tab='tasks';ui.q='';$('q').value='';render()}
