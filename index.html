@@ -214,6 +214,7 @@ body.admin .grip{display:inline-block}
 .bar2{height:6px;border-radius:6px;background:var(--line);overflow:hidden}.bar2 i{display:block;height:100%;background:var(--ok)}
 .soon{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;margin-bottom:6px}
 html[data-fs="l"] body{zoom:1.12}html[data-fs="xl"] body{zoom:1.25}
+.acd summary{cursor:pointer;color:var(--mut);font-size:14px;padding:4px 0}.acd[open] summary{margin-bottom:10px}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -674,13 +675,10 @@ async function delTeach(el){
 }
 
 /* ---------- кабинет: профиль, статистика, напоминания ---------- */
-var AVEMO=['🦊','🐼','🐯','🦉','🐙','🚀','⚡','🎧','📚','🧪','⚙️','🎯'];
 function refreshAuthBtn(){var b=$('authBtn');if(!b)return;b.className=USER?'btn authb':'btn';b.innerHTML=USER?avatarH(26)+'<span>Кабинет</span>':'Войти'}
 function avatarH(px){
-  var a=PROFILE.avatar||{},st='width:'+px+'px;height:'+px+'px;font-size:'+Math.round(px*.55)+'px';
-  if(a.t==='img')return '<img class="avs" style="'+st+'" src="'+esc(a.d)+'" alt="">';
-  if(a.t==='emo')return '<span class="avs" style="'+st+';background:'+esc(a.c||'#c8102e')+'">'+esc(a.e)+'</span>';
-  return '<span class="avs" style="'+st+';background:var(--acc);color:var(--bg);font-weight:700">'+esc((shownName(USER)||'?').charAt(0).toUpperCase())+'</span>';
+  var a=PROFILE.avatar;
+  return (a&&a.t==='img')?'<img class="avs" style="width:'+px+'px;height:'+px+'px" src="'+esc(a.d)+'" alt="">':'';
 }
 function applyProfile(){
   if(USER){
@@ -727,25 +725,23 @@ function soonList(){
   return it.slice(0,10);
 }
 function accOverview(){
-  var st=myStats(),pc=st.all?Math.round(st.d/st.all*100):0;
-  var h='<div class="sline" style="margin:0"><span class="sc"><i class="sd" style="background:var(--ink)"></i><b>'+st.a+'</b> активных</span><span class="sc'+(st.o?' bad':' dim')+'"><i class="sd" style="background:var(--bad)"></i><b>'+st.o+'</b> просрочено</span><span class="sc"><i class="sd" style="background:#1e88e5"></i><b>'+st.w+'</b> на 7 дней</span><span class="sc"><i class="sd" style="background:var(--ok)"></i><b>'+st.d+'</b> из '+st.all+' выполнено</span></div><div class="bar2"><i style="width:'+pc+'%"></i></div>';
-  var sl=soonList();
+  var st=myStats();
+  var h='<div class="sline" style="margin:0"><span class="sc"><i class="sd" style="background:var(--ink)"></i><b>'+st.a+'</b> активных</span><span class="sc'+(st.o?' bad':' dim')+'"><i class="sd" style="background:var(--bad)"></i><b>'+st.o+'</b> просрочено</span><span class="sc"><i class="sd" style="background:#1e88e5"></i><b>'+st.w+'</b> на 7 дней</span><span class="sc"><i class="sd" style="background:var(--ok)"></i><b>'+st.d+'</b> из '+st.all+' выполнено</span></div>';
+  var sl=soonList().slice(0,5);
   h+='<div><div class="vsec">Скоро</div>'+(sl.length?sl.map(function(x){return '<button class="soon" data-a="soon" data-k="'+x.k+'" data-id="'+x.id+'"><i class="sd" style="background:'+x.c+'"></i><span style="flex:1;min-width:0"><b>'+esc(x.title)+'</b><br><span class="ld due '+(x.cls||'')+'">'+esc(x.label)+'</span></span></button>'}).join(''):'<div class="sub">На ближайшую неделю срочного нет.</div>')+'</div>';
   var ng=S.events.filter(function(e){return GOING[e.id]&&!evPast(e)}).length,nt=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)>new Date()}).length;
-  h+='<div><div class="vsec">Напоминания в календаре телефона</div><div class="sub" style="margin-bottom:8px">Файл календаря с напоминаниями за сутки и за час. Откройте его, и записи появятся в календаре телефона.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="icsGo">События «Иду» ('+ng+')</button><button class="btn sm" data-a="icsTasks">Мои дедлайны ('+nt+')</button></div></div>';
+  h+='<div class="sub">В календарь телефона с напоминаниями: <button class="lnk" data-a="icsGo" style="padding:0 4px">события «Иду» ('+ng+')</button><button class="lnk" data-a="icsTasks" style="padding:0 4px">мои дедлайны ('+nt+')</button></div>';
   return h;
 }
 function accSettings(){
-  var P=PROFILE,cur=P.avatar||{};
-  var seg=function(k,opts,val){return '<div class="seg" style="display:flex;flex-wrap:wrap">'+opts.map(function(o){return '<button class="'+(o[0]===val?'on':'')+'" data-a="pset" data-k="'+k+'" data-v="'+o[0]+'" style="flex:1 0 auto">'+o[1]+'</button>'}).join('')+'</div>'};
-  var emo=AVEMO.map(function(e){return '<button class="pill'+(cur.t==='emo'&&cur.e===e?' on':'')+'" style="--c:var(--acc);padding:4px 9px;font-size:18px" data-a="avemo" data-id="'+e+'">'+e+'</button>'}).join('');
-  var cols=COLORS.slice(0,12).map(function(c){return '<button class="'+(cur.t==='emo'&&cur.c===c?'on':'')+'" style="--c:'+c+'" data-a="avcol" data-id="'+c+'" aria-label="Цвет"></button>'}).join('');
-  return '<div style="display:grid;gap:8px"><div class="vsec">Аватар</div><div style="display:flex;gap:12px;align-items:center">'+avatarH(56)+'<div class="sub">Выберите значок и цвет или загрузите картинку. Не загружайте своё фото: лучше рисунок. Аватар виден только вам.</div></div><div class="pills">'+emo+'</div><div class="sw">'+cols+'</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="avpick">Загрузить картинку</button><button class="btn sm" data-a="avreset">Сбросить</button></div><input type="file" id="avFile" accept="image/*" hidden></div>'+
-  '<div><div class="vsec">Тема</div>'+seg('theme',[['auto','Как в телефоне'],['light','Светлая'],['dark','Тёмная']],P.theme||'auto')+'</div>'+
-  '<div><div class="vsec">Размер текста</div>'+seg('fs',[['m','Обычный'],['l','Крупный'],['xl','Очень крупный']],P.fs||'m')+'</div>'+
-  '<div><div class="vsec">Стартовая вкладка</div>'+seg('tab',[['tasks','Задания'],['books','Материалы'],['teachers','Преподаватели'],['events','Афиша']],P.tab||'tasks')+'</div>'+
+  var P=PROFILE,hasAv=!!(P.avatar&&P.avatar.t==='img');
+  var sel=function(id,label,opts,val){return '<label>'+label+'<select id="'+id+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===val?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></label>'};
+  return '<details class="acd" id="acSet"'+(ui.setOpen?' open':'')+'><summary>Настройки</summary><div style="display:grid;gap:12px">'+
+  '<div style="display:flex;gap:12px;align-items:center">'+(hasAv?avatarH(44):'')+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="avpick">'+(hasAv?'Заменить фото':'Добавить фото')+'</button>'+(hasAv?'<button class="btn sm" data-a="avreset">Убрать</button>':'')+'</div></div><input type="file" id="avFile" accept="image/*" hidden>'+
+  '<div class="r2">'+sel('sTheme','Тема',[['auto','Как в телефоне'],['light','Светлая'],['dark','Тёмная']],P.theme||'auto')+sel('sFs','Размер текста',[['m','Обычный'],['l','Крупный'],['xl','Очень крупный']],P.fs||'m')+'</div>'+
+  sel('sTab','Стартовая вкладка',[['tasks','Задания'],['books','Материалы'],['teachers','Преподаватели'],['events','Афиша']],P.tab||'tasks')+
   (ADMIN?'<div style="border-top:1px solid var(--line);padding-top:12px;display:grid;gap:10px"><div class="vsec">Сброс пароля студента</div><div class="r2"><label>Ник<input id="aNick2" autocomplete="off"></label><label>Новый пароль<input id="aPass2" type="text" autocomplete="off"></label></div><button class="btn sm" data-a="admreset" style="justify-self:start">Поставить пароль</button></div>':'')+
-  '<div style="border-top:1px solid var(--line);padding-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="chpw">Сменить пароль</button>'+(ADMIN?'':'<button class="btn sm dng" data-a="delacc">Удалить аккаунт</button>')+'</div>';
+  '<div style="display:flex;gap:14px;flex-wrap:wrap"><button class="lnk" data-a="chpw" style="padding:0">Сменить пароль</button>'+(ADMIN?'':'<button class="lnk" data-a="delacc" style="padding:0;color:var(--bad)">Удалить аккаунт</button>')+'</div></div></details>';
 }
 
 /* ---------- календарь телефона (.ics) ---------- */
@@ -1104,9 +1100,8 @@ function drawAcc(){
     F.innerHTML=cancel+'<button class="btn pri" data-a="dosetpw">Сохранить</button>';return;
   }
   if(USER){
-    H.innerHTML='<span style="display:inline-flex;gap:10px;align-items:center">'+avatarH(38)+'<span>'+esc(shownName(USER))+(ADMIN?' <span class="pr h">Администратор</span>':'')+'</span></span>';
-    var tab=ui.accTab||'ov';
-    B.innerHTML='<div class="seg" style="display:flex"><button class="'+(tab==='ov'?'on':'')+'" data-a="acctab" data-id="ov" style="flex:1">Обзор</button><button class="'+(tab==='set'?'on':'')+'" data-a="acctab" data-id="set" style="flex:1">Настройки</button></div>'+(tab==='ov'?accOverview():accSettings())+msgs;
+    H.innerHTML='<span style="display:inline-flex;gap:10px;align-items:center">'+avatarH(34)+'<span>'+esc(shownName(USER))+(ADMIN?' <span class="pr h">Администратор</span>':'')+'</span></span>';
+    B.innerHTML=accOverview()+accSettings()+msgs;
     F.innerHTML=cancel+'<button class="btn pri" data-a="logout">Выйти</button>';return;
   }
   var v0=$('aNick')?$('aNick').value:'';
@@ -1237,10 +1232,6 @@ document.addEventListener('click',function(e){
   else if(a==='evics'){var ev0=S.events.find(function(x){return x.id===id});if(ev0)dlIcs('afisha.ics',evIcs(ev0))}
   else if(a==='icsGo'){var L=[];S.events.forEach(function(x){if(GOING[x.id]&&!evPast(x))L=L.concat(evIcs(x))});dlIcs('moi-sobytiya.ics',L)}
   else if(a==='icsTasks'){var L2=[];S.tasks.forEach(function(x){if(!x.done&&x.due&&new Date(x.due)>new Date()){var sj=subj(x.sid);L2=L2.concat(icsEvent(x.id,'Дедлайн: '+x.title+(sj?' ('+sj.name+')':''),x.due,30,'',x.desc,['-P1D','-PT3H']))}});dlIcs('moi-dedlaini.ics',L2)}
-  else if(a==='acctab'){ui.accTab=id;drawAcc()}
-  else if(a==='pset'){PROFILE[el.dataset.k]=el.dataset.v;applyProfile();saveDone();drawAcc()}
-  else if(a==='avemo'){var av=PROFILE.avatar;PROFILE.avatar={t:'emo',e:id,c:(av&&av.t==='emo'&&av.c)||COLORS[0]};afterProfile()}
-  else if(a==='avcol'){var av2=PROFILE.avatar;PROFILE.avatar={t:'emo',e:(av2&&av2.t==='emo'&&av2.e)||AVEMO[0],c:id};afterProfile()}
   else if(a==='avpick')$('avFile').click();
   else if(a==='avreset'){delete PROFILE.avatar;afterProfile()}
   else if(a==='soon'){$('dData').close();if(el.dataset.k==='task')openView(id);else openEvView(id)}
@@ -1304,10 +1295,12 @@ document.addEventListener('input',function(e){
   if(el.dataset&&el.dataset.l){var l=les[+el.dataset.i];if(l)l[el.dataset.l]=el.dataset.l==='day'?+el.value:el.value}
   else if(el.dataset&&el.dataset.c!==undefined){var cc=cons[+el.dataset.i];if(cc){cc[el.dataset.c]=el.value;if(el.dataset.c==='when')drawCons()}}
   else if(el.id==='tSub'){var tt=$('tTeach');if(tt)tt.innerHTML=teacherOpts(el.value,'')}
+  else if(/^s(Theme|Fs|Tab)$/.test(el.id)){PROFILE[{sTheme:'theme',sFs:'fs',sTab:'tab'}[el.id]]=el.value;applyProfile();saveDone()}
   else if(el.id==='vNote'){if(el.value.trim())NOTES[ui.viewId]=el.value;else delete NOTES[ui.viewId];saveDone()}
   else if(el.id==='q'){ui.q=el.value;render()}
   else if(el.id==='cpick'){pickC=el.value;[].forEach.call(document.querySelectorAll('#sw button'),function(b){b.classList.remove('on')});el.parentNode.classList.add('on')}
 });
+document.addEventListener('toggle',function(e){if(e.target.id==='acSet')ui.setOpen=e.target.open},true);
 document.addEventListener('paste',function(e){var f=[].filter.call((e.clipboardData||{}).files||[],function(x){return x.type.indexOf('image/')===0});if(f.length){if($('dEv').open)addEvFiles(f);else addFiles(f)}});
 document.addEventListener('dragover',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.add('over')}});
 document.addEventListener('dragleave',function(e){var d=$('drop');if(d)d.classList.remove('over')});
