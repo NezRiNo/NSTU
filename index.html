@@ -727,8 +727,10 @@ function soonList(){
 function accOverview(){
   var st=myStats();
   var h='<div class="sline" style="margin:0"><span class="sc"><i class="sd" style="background:var(--ink)"></i><b>'+st.a+'</b> активных</span><span class="sc'+(st.o?' bad':' dim')+'"><i class="sd" style="background:var(--bad)"></i><b>'+st.o+'</b> просрочено</span><span class="sc"><i class="sd" style="background:#1e88e5"></i><b>'+st.w+'</b> на 7 дней</span><span class="sc"><i class="sd" style="background:var(--ok)"></i><b>'+st.d+'</b> из '+st.all+' выполнено</span></div>';
-  var sl=soonList().slice(0,5);
-  h+='<div><div class="vsec">Скоро</div>'+(sl.length?sl.map(function(x){return '<button class="soon" data-a="soon" data-k="'+x.k+'" data-id="'+x.id+'"><i class="sd" style="background:'+x.c+'"></i><span style="flex:1;min-width:0"><b>'+esc(x.title)+'</b><br><span class="ld due '+(x.cls||'')+'">'+esc(x.label)+'</span></span></button>'}).join(''):'<div class="sub">На ближайшую неделю срочного нет.</div>')+'</div>';
+  var all=soonList(),row=function(x){return '<button class="soon" data-a="soon" data-k="'+x.k+'" data-id="'+x.id+'"><i class="sd" style="background:'+x.c+'"></i><span style="flex:1;min-width:0"><b>'+esc(x.title)+'</b><br><span class="ld due '+(x.cls||'')+'">'+esc(x.label)+'</span></span></button>'};
+  var tk=all.filter(function(x){return x.k==='task'}).slice(0,5),evs=all.filter(function(x){return x.k==='ev'}).slice(0,3);
+  h+='<div><div class="vsec">Ближайшие работы</div>'+(tk.length?tk.map(row).join(''):'<div class="sub">На ближайшую неделю работ нет.</div>')+'</div>';
+  if(evs.length)h+='<div><div class="vsec">События</div>'+evs.map(row).join('')+'</div>';
   var ng=S.events.filter(function(e){return GOING[e.id]&&!evPast(e)}).length,nt=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)>new Date()}).length;
   h+='<div class="sub">В календарь телефона с напоминаниями: <button class="lnk" data-a="icsGo" style="padding:0 4px">события «Иду» ('+ng+')</button><button class="lnk" data-a="icsTasks" style="padding:0 4px">мои дедлайны ('+nt+')</button></div>';
   return h;
@@ -736,12 +738,12 @@ function accOverview(){
 function accSettings(){
   var P=PROFILE,hasAv=!!(P.avatar&&P.avatar.t==='img');
   var sel=function(id,label,opts,val){return '<label>'+label+'<select id="'+id+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===val?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></label>'};
-  return '<details class="acd" id="acSet"'+(ui.setOpen?' open':'')+'><summary>Настройки</summary><div style="display:grid;gap:12px">'+
+  return '<div style="display:grid;gap:12px">'+
   '<div style="display:flex;gap:12px;align-items:center">'+(hasAv?avatarH(44):'')+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="avpick">'+(hasAv?'Заменить фото':'Добавить фото')+'</button>'+(hasAv?'<button class="btn sm" data-a="avreset">Убрать</button>':'')+'</div></div><input type="file" id="avFile" accept="image/*" hidden>'+
   '<div class="r2">'+sel('sTheme','Тема',[['auto','Как в телефоне'],['light','Светлая'],['dark','Тёмная']],P.theme||'auto')+sel('sFs','Размер текста',[['m','Обычный'],['l','Крупный'],['xl','Очень крупный']],P.fs||'m')+'</div>'+
   sel('sTab','Стартовая вкладка',[['tasks','Задания'],['books','Материалы'],['teachers','Преподаватели'],['events','Афиша']],P.tab||'tasks')+
   (ADMIN?'<div style="border-top:1px solid var(--line);padding-top:12px;display:grid;gap:10px"><div class="vsec">Сброс пароля студента</div><div class="r2"><label>Ник<input id="aNick2" autocomplete="off"></label><label>Новый пароль<input id="aPass2" type="text" autocomplete="off"></label></div><button class="btn sm" data-a="admreset" style="justify-self:start">Поставить пароль</button></div>':'')+
-  '<div style="display:flex;gap:14px;flex-wrap:wrap"><button class="lnk" data-a="chpw" style="padding:0">Сменить пароль</button>'+(ADMIN?'':'<button class="lnk" data-a="delacc" style="padding:0;color:var(--bad)">Удалить аккаунт</button>')+'</div></div></details>';
+  '<div style="display:flex;gap:14px;flex-wrap:wrap"><button class="lnk" data-a="chpw" style="padding:0">Сменить пароль</button>'+(ADMIN?'':'<button class="lnk" data-a="delacc" style="padding:0;color:var(--bad)">Удалить аккаунт</button>')+'</div></div>';
 }
 
 /* ---------- календарь телефона (.ics) ---------- */
@@ -1089,7 +1091,7 @@ function aerr(m){var e=$('aErr');if(e)e.textContent=m||''}
 function amsgs(m){var e=$('aMsg');if(e)e.textContent=m||''}
 function toEmail(v){v=String(v||'').trim().toLowerCase();return v.indexOf('@')>=0?v:v+'@'+AUTH_DOMAIN}
 function shownName(u){var e=(u&&u.email)||'';var p=e.split('@');return p[1]===AUTH_DOMAIN?p[0]:e}
-function accOpen(mode){if(mode)amode=mode;armed=false;drawAcc();if(!$('dData').open)$('dData').showModal()}
+function accOpen(mode){if(mode)amode=mode;if(!$('dData').open)ui.accView='ov';armed=false;drawAcc();if(!$('dData').open)$('dData').showModal()}
 function drawAcc(){
   var H=$('dDataH'),B=$('dDataB'),F=$('dDataF');
   var cancel='<button class="btn" data-a="close" data-t="dData">Закрыть</button>';
@@ -1100,8 +1102,10 @@ function drawAcc(){
     F.innerHTML=cancel+'<button class="btn pri" data-a="dosetpw">Сохранить</button>';return;
   }
   if(USER){
-    H.innerHTML='<span style="display:inline-flex;gap:10px;align-items:center">'+avatarH(34)+'<span>'+esc(shownName(USER))+(ADMIN?' <span class="pr h">Администратор</span>':'')+'</span></span>';
-    B.innerHTML=accOverview()+accSettings()+msgs;
+    var setv=ui.accView==='set';
+    var gear='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 5h8M13 5h1M2 11h1M6 11h8"/><circle cx="11.5" cy="5" r="1.5"/><circle cx="4.5" cy="11" r="1.5"/></svg>';
+    H.innerHTML=setv?'<span style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Настройки</span><button class="btn sm" data-a="accback">‹ Назад</button></span>':'<span style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="display:inline-flex;gap:10px;align-items:center;min-width:0">'+avatarH(34)+'<span style="min-width:0;overflow-wrap:anywhere">'+esc(shownName(USER))+(ADMIN?' <span class="pr h">Администратор</span>':'')+'</span></span><button class="btn sm" data-a="accset" style="display:inline-flex;gap:6px;align-items:center;flex:none">'+gear+'Настройки</button></span>';
+    B.innerHTML=(setv?accSettings():accOverview())+msgs;
     F.innerHTML=cancel+'<button class="btn pri" data-a="logout">Выйти</button>';return;
   }
   var v0=$('aNick')?$('aNick').value:'';
@@ -1234,6 +1238,8 @@ document.addEventListener('click',function(e){
   else if(a==='icsTasks'){var L2=[];S.tasks.forEach(function(x){if(!x.done&&x.due&&new Date(x.due)>new Date()){var sj=subj(x.sid);L2=L2.concat(icsEvent(x.id,'Дедлайн: '+x.title+(sj?' ('+sj.name+')':''),x.due,30,'',x.desc,['-P1D','-PT3H']))}});dlIcs('moi-dedlaini.ics',L2)}
   else if(a==='avpick')$('avFile').click();
   else if(a==='avreset'){delete PROFILE.avatar;afterProfile()}
+  else if(a==='accset'){ui.accView='set';drawAcc()}
+  else if(a==='accback'){ui.accView='ov';drawAcc()}
   else if(a==='soon'){$('dData').close();if(el.dataset.k==='task')openView(id);else openEvView(id)}
   else if(a==='evf'){ui.evf=id;render()}
   else if(a==='tsub'){var ix=tsel.indexOf(id);if(ix<0)tsel.push(id);else tsel.splice(ix,1);drawPills()}
