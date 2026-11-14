@@ -239,6 +239,21 @@ dialog:not(#lb)::before{content:"";display:block;width:38px;height:4px;border-ra
 .df{padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
 }
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+.task{display:block}
+.task .tb{display:block}
+.trow{display:flex;gap:12px;align-items:center;min-height:24px}
+.trow .tt{flex:1;min-width:0;line-height:1.3}
+.task .chk{margin:0}
+.tbody{margin-left:34px}
+.grip,.gripsp{width:14px;padding:0;text-align:center;flex:none}
+.gripsp{display:none}body.admin .gripsp{display:inline-block}
+header .btn{height:40px;padding:0 14px}header .btn.ico{padding:0 11px}
+.seg button{height:38px;padding:0 13px}
+.srow{justify-content:space-between}
+.srow input{height:40px;flex:0 1 420px;margin-left:auto}
+.tools .btn{height:40px;padding:0 16px}
+.tools .btn.sm{height:32px;padding:0 12px}
+@media (max-width:820px){.srow input{flex:1 1 100%;margin-left:0}header .btn{height:40px}.tabbar button{height:auto}}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -343,7 +358,7 @@ function setTC(){try{var m=document.querySelector('meta[name="theme-color"]');if
 function navCnt(id){var f=function(x){return id==='all'||x.sid===id};return ui.tab==='books'?S.books.filter(f).length:ui.tab==='links'?S.links.filter(f).length:ui.tab==='teachers'?teacherList().filter(function(o){return id==='all'||o.subs[id]}).length:ui.tab==='events'?S.events.filter(f).length:openCnt(id).length}
 function renderNav(){
   var od=S.tasks.filter(function(t){return !t.done&&t.due&&new Date(t.due)<new Date()}).length;
-  var h='<button class="nav'+(ui.sub==='all'?' on':'')+'" data-a="sub" data-id="all"><span class="dot" style="background:var(--ink)"></span><span class="nm">Все дисциплины</span>'+(od&&ui.tab==='tasks'?'<span class="cnt bad" title="Просрочено">'+od+'</span>':'<span class="cnt">'+navCnt('all')+'</span>')+'</button>';
+  var h='<button class="nav'+(ui.sub==='all'?' on':'')+'" data-a="sub" data-id="all"><span class="gripsp"></span><span class="dot" style="background:var(--ink)"></span><span class="nm">Все дисциплины</span>'+(od&&ui.tab==='tasks'?'<span class="cnt bad" title="Просрочено">'+od+'</span>':'<span class="cnt">'+navCnt('all')+'</span>')+'</button>';
   S.subjects.forEach(function(s){
     h+='<button class="nav'+(ui.sub===s.id?' on':'')+'" data-a="sub" data-id="'+s.id+'"><span class="grip" title="Перетащить, чтобы изменить порядок">⋮⋮</span><span class="dot" style="background:'+s.color+'"></span><span class="nm">'+esc(s.name)+'</span><span class="cnt">'+navCnt(s.id)+'</span></button>';
   });
@@ -407,8 +422,8 @@ function taskH(t,di){
     else fl+='<a class="file" href="'+f.d+'" download="'+esc(f.n)+'" data-a="none">'+esc(f.n)+'</a>';
   });
   var badges=pubBadge(t)+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+(NOTES[t.id]?'<span class="pr">Заметка</span>':'');
-  return '<div class="task'+(t.done?' done':'')+'" style="--c:'+s.color+'"><button class="chk" data-a="toggle" data-id="'+t.id+'" aria-label="Отметить выполненным">'+(t.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3 3 7-7" stroke="#fff" stroke-width="2" fill="none"/></svg>':'')+'</button>'+
-  '<div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="trow"><div class="tt">'+esc(t.title)+'</div><span class="pl" style="--p:'+ds.p+'" title="'+esc(di.txt)+'">'+esc(ds.t)+'</span></div><div class="sb2"><i class="dd8"></i><span>'+esc(s.name)+'</span>'+(t.teacher?'<span>'+esc(t.teacher)+'</span>':'')+badges+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div>';
+  var chk='<button class="chk" data-a="toggle" data-id="'+t.id+'" aria-label="Отметить выполненным">'+(t.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3 3 7-7" stroke="#fff" stroke-width="2" fill="none"/></svg>':'')+'</button>';
+  return '<div class="task'+(t.done?' done':'')+'" style="--c:'+s.color+'"><div class="tb" data-a="editTask" data-id="'+t.id+'"><div class="trow">'+chk+'<div class="tt">'+esc(t.title)+'</div><span class="pl" style="--p:'+ds.p+'" title="'+esc(di.txt)+'">'+esc(ds.t)+'</span></div><div class="tbody"><div class="sb2"><i class="dd8"></i><span>'+esc(s.name)+'</span>'+(t.teacher?'<span>'+esc(t.teacher)+'</span>':'')+badges+'</div>'+(t.desc?'<div class="desc">'+esc(t.desc)+'</div>':'')+((th||fl)?'<div class="thumbs">'+th+fl+'</div>':'')+'</div></div></div>';
 }
 
 /* ---------- занятия, поиск, литература ---------- */
