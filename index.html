@@ -254,6 +254,17 @@ header .btn{height:40px;padding:0 14px}header .btn.ico{padding:0 11px}
 .tools .btn{height:40px;padding:0 16px}
 .tools .btn.sm{height:32px;padding:0 12px}
 @media (max-width:820px){.srow input{flex:1 1 100%;margin-left:0}header .btn{height:40px}.tabbar button{height:auto}}
+.inst{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
+.inst[hidden]{display:none}
+.inst .ir{display:flex;gap:10px;align-items:center}
+.inst .it{display:flex;flex-direction:column;flex:1;min-width:0;font-size:13px;color:var(--mut)}
+.inst .it b{color:var(--ink);font-size:14px}
+.inst .ix{border:0;background:transparent;color:var(--mut);font-size:20px;line-height:1;width:28px;height:28px;border-radius:8px;flex:none}
+.inst .ix:hover{background:var(--acc2)}
+.inst .btn{width:100%}
+.inst-side{margin-top:12px}
+.inst-foot{display:none}
+@media (max-width:820px){.inst-side{display:none}.inst-foot{display:grid;max-width:460px;margin:8px auto 0}}
 @media (prefers-reduced-motion:reduce){.boot b{animation:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -270,9 +281,9 @@ header .btn{height:40px;padding:0 14px}header .btn.ico{padding:0 11px}
   </div>
 </header>
 <div class="srow"><div class="seg"><button data-a="tab" data-id="tasks" id="tabT">Задания</button><button data-a="tab" data-id="mat" id="tabB">Материалы</button><button data-a="tab" data-id="teachers" id="tabP">Преподаватели</button><button data-a="tab" data-id="events" id="tabE">Афиша</button></div><input id="q" type="search" placeholder="Поиск" autocomplete="off"></div>
-<aside><div id="cal"></div><div class="navl" id="nav"></div></aside>
+<aside><div id="cal"></div><div class="navl" id="nav"></div><div class="inst inst-side" data-inst hidden><div class="ir"><svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="4" width="10" height="32" rx="1.5" fill="var(--acc)"/><rect x="24" y="4" width="10" height="32" rx="1.5" fill="var(--ok)"/><rect x="15" y="15" width="10" height="10" fill="var(--ink)"/></svg><div class="it"><b>Установить приложение</b><span>Откроется как обычное приложение, без адресной строки</span></div><button class="ix" data-a="insthide" aria-label="Скрыть">×</button></div><button class="btn pri" data-a="install">Установить</button></div></aside>
 <main id="main"></main>
-<footer class="foot"><button class="lnk" id="instBtn" data-a="install" hidden>Установить приложение</button></footer>
+<footer class="foot"><div class="inst inst-foot" data-inst hidden><div class="ir"><svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="4" width="10" height="32" rx="1.5" fill="var(--acc)"/><rect x="24" y="4" width="10" height="32" rx="1.5" fill="var(--ok)"/><rect x="15" y="15" width="10" height="10" fill="var(--ink)"/></svg><div class="it"><b>Установить приложение</b><span>Откроется как обычное приложение, без адресной строки</span></div><button class="ix" data-a="insthide" aria-label="Скрыть">×</button></div><button class="btn pri" data-a="install">Установить</button></div></footer>
 <nav class="tabbar" id="tabbar" aria-label="Разделы"><button data-a="tab" data-id="tasks" id="nbT"><svg width="22" height="22" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" rx="3"/><path d="M7 10l2 2 4-4"/></svg><span>Задания</span></button><button data-a="tab" data-id="mat" id="nbB"><svg width="22" height="22" viewBox="0 0 20 20"><path d="M3 4h5a2 2 0 0 1 2 2v10a2 2 0 0 0-2-2H3zM17 4h-5a2 2 0 0 0-2 2v10a2 2 0 0 1 2-2h5z"/></svg><span>Материалы</span></button><button data-a="tab" data-id="teachers" id="nbP"><svg width="22" height="22" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3"/><path d="M4 17c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg><span>Люди</span></button><button data-a="tab" data-id="events" id="nbE"><svg width="22" height="22" viewBox="0 0 20 20"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v3M13 2v3"/></svg><span>Афиша</span></button></nav>
 </div>
 
@@ -793,12 +804,19 @@ async function doRestore(){
 }
 function isStandalone(){return (window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true}
 function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)}
-function canInstall(){return !isStandalone()&&!(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData)&&(!!deferredPrompt||isIOS())}
-function updInstall(){var b=$('instBtn');if(b)b.hidden=!canInstall()}
-function iosHelp(){
+function canInstall(){return !isStandalone()&&!(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData)}
+function instHidden(){try{var t=+localStorage.getItem('uchyoba-inst-hide');return !!t&&Date.now()-t<30*864e5}catch(e){return false}}
+function updInstall(){var on=canInstall()&&!instHidden();[].forEach.call(document.querySelectorAll('[data-inst]'),function(el){el.hidden=!on})}
+function installHelp(){
+  var ua=navigator.userAgent,steps;
+  if(isIOS())steps='1. Откройте сайт в Safari (в других браузерах пункта установки нет).\n2. Нажмите кнопку «Поделиться» (квадрат со стрелкой вверх).\n3. Выберите «На экран “Домой”».\n4. Нажмите «Добавить».';
+  else if(/android/i.test(ua))steps='1. Откройте сайт в Chrome.\n2. Нажмите меню ⋮ в правом верхнем углу.\n3. Выберите «Установить приложение» или «Добавить на главный экран».';
+  else if(/firefox/i.test(ua))steps='Firefox на компьютере не умеет устанавливать сайты как приложения. Откройте сайт в Chrome или Edge и нажмите значок установки в адресной строке.';
+  else if(/safari/i.test(ua)&&!/chrome|chromium|edg/i.test(ua))steps='В Safari на Mac: меню «Файл», затем «Добавить в Dock».';
+  else steps='1. В адресной строке справа найдите значок установки (монитор со стрелкой).\n2. Нажмите его и выберите «Установить».\nЕсли значка нет, откройте меню ⋮, затем «Трансляция, сохранение и общий доступ», затем «Установить как приложение».';
   ui.viewEv=null;
-  $('dViewH').textContent='Установка на iPhone';
-  $('dViewB').innerHTML='<div class="vdesc">1. Откройте сайт в Safari (в других браузерах пункта установки нет).\n2. Нажмите кнопку «Поделиться» (квадрат со стрелкой вверх).\n3. Выберите «На экран “Домой”».\n4. Нажмите «Добавить».</div>';
+  $('dViewH').textContent='Установка приложения';
+  $('dViewB').innerHTML='<div class="vdesc">'+esc(steps)+'</div>';
   $('dViewF').innerHTML='<button class="btn pri" data-a="close" data-t="dView">Понятно</button>';
   if(!$('dView').open)$('dView').showModal();
 }
@@ -1400,8 +1418,9 @@ document.addEventListener('click',function(e){
   else if(a==='accback'){ui.accView='ov';drawAcc()}
   else if(a==='install'){
     if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;updInstall()})}
-    else if(isIOS())iosHelp();
+    else installHelp();
   }
+  else if(a==='insthide'){try{localStorage.setItem('uchyoba-inst-hide',String(Date.now()))}catch(e){}updInstall()}
   else if(a==='addadm'){
     aerr('');amsgs('');var nk2=($('aNick3').value||'').trim();if(!nk2){aerr('Введите ник');return}
     sb.rpc('add_admin',{p_nick:nk2}).then(function(r){if(r.error){aerr(/not found/i.test(r.error.message)?'Такого ника нет. Пусть студент сначала зарегистрируется.':r.error.message);return}loadAdmins().then(function(){amsgs('Администратор добавлен')})});
