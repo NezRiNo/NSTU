@@ -450,10 +450,18 @@ function dueInfo(t){
   if(d<new Date())return {txt:'Просрочено: '+dt+', '+fmtT(d),cls:'bad',g:0};
   if(n===0)return {txt:'Сегодня в '+fmtT(d),cls:'warn',g:1};
   if(n===1)return {txt:'Завтра в '+fmtT(d),cls:'warn',g:2};
-  if(n<=7)return {txt:'Через '+pl(n,['день','дня','дней'])+', '+dt,cls:'',g:3};
+  var toSun=6-(new Date().getDay()+6)%7,tx='Через '+pl(n,['день','дня','дней'])+', '+dt;
+  if(n<=toSun)return {txt:tx,cls:'',g:3};
+  if(n<=toSun+7)return {txt:tx,cls:'',g:3.5};
   return {txt:dt+', '+fmtT(d),cls:'',g:4};
 }
 var GN=['Просрочено','Сегодня','Завтра','На этой неделе','Позже','Без срока','Выполнено'];
+GN['3.5']='На следующей неделе';
+function grpName(g){
+  if(g!==3.5)return GN[g];
+  var now=new Date(),mon=new Date(now.getFullYear(),now.getMonth(),now.getDate()-(now.getDay()+6)%7+7);
+  return GN[g]+'<span class="ld" style="margin-left:8px;font-weight:400">'+rngTxt(mon,new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+6))+'</span>';
+}
 
 function render(){
   if(!OPTS.cal)ui.day='';
@@ -513,7 +521,7 @@ function renderMain(){
     list.forEach(function(t){
       var di=dueInfo(t),g=ui.flt==='all'?(t.done?6:di.g):di.g;
       if(ui.flt==='done'||ui.flt==='arch')g=6;
-      if(g!==last&&ui.flt!=='done'&&ui.flt!=='arch'){h+='<div class="grp'+(g===0?' bad':'')+'">'+GN[g]+'</div>';last=g}
+      if(g!==last&&ui.flt!=='done'&&ui.flt!=='arch'){h+='<div class="grp'+(g===0?' bad':'')+'">'+grpName(g)+'</div>';last=g}
       h+=taskH(t,di);
     });
   }
