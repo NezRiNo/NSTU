@@ -315,6 +315,16 @@ dialog::backdrop{animation:fade .3s}
 .tbi{position:absolute;top:0;left:0;width:25%;height:2px;background:var(--acc);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 @media (min-width:821px){dialog[open]:not(#lb){animation:popIn .22s ease-out}}
 [hidden]{display:none!important}
+.file.ref{border-color:var(--acc);color:var(--acc);background:transparent}
+.file.ref.gone{color:var(--mut);border-color:var(--line);text-decoration:line-through}
+#tMat{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--card)}
+.matl{display:grid;gap:6px;max-height:260px;overflow:auto}
+.matg{font-size:12px;color:var(--mut);margin-top:6px}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.mrow b{display:block;font-size:14px;font-weight:600;overflow-wrap:anywhere}.mrow small{display:block;color:var(--mut);font-size:12px;overflow-wrap:anywhere}
+.mrow.on{border-color:var(--acc);background:var(--acc2)}
+.mck{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:13px}
+.mrow.on .mck{background:var(--acc);border-color:var(--acc);color:var(--bg)}
 .fsg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .fst{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;padding:12px 6px 10px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-height:84px;transition:background .15s,border-color .15s,transform .1s}
 .fst small{font-size:12px;color:var(--mut);text-align:center;line-height:1.2}
@@ -336,8 +346,8 @@ dialog::backdrop{animation:fade .3s}
 .atile:active{transform:scale(.97)}
 .ati{width:34px;height:34px;border-radius:10px;background:var(--acc2);color:var(--acc);display:grid;place-items:center;flex:none;transition:background .15s}
 .atile:hover .ati{background:var(--card)}
-.att{min-width:0}.att b{display:block;font-weight:600;font-size:14px;line-height:1.2}
-.att small{display:block;color:var(--mut);font-size:12px;margin-top:2px;line-height:1.3}
+.atx{min-width:0}.atx b{display:block;font-weight:600;font-size:14px;line-height:1.2}
+.atx small{display:block;color:var(--mut);font-size:12px;margin-top:2px;line-height:1.3}
 .atb{position:absolute;top:10px;right:10px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--acc);color:var(--bg);font-size:12px;font-weight:600;display:grid;place-items:center}
 .tv>div{border-top:0!important;padding-top:0!important}.tv>div>.vsec:first-child{display:none}
 .trrow,.lgrow{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px}
@@ -523,6 +533,7 @@ function taskH(t,di){
   var s=subj(t.sid)||{name:'Без дисциплины',color:'#6b7a8f'},th='',fl='',ds=dueShort(t);
   (t.files||[]).forEach(function(f,i){
     if(f.t.indexOf('image/')===0)th+=OPTS.thumbs?'<img class="th" loading="lazy" data-a="zoom" data-id="'+t.id+'" data-i="'+i+'" src="'+esc(f.th||f.d)+'" alt="'+esc(f.n)+'">':'';
+    else if(f.ref)fl+=refChip(f,true);
     else fl+='<a class="file" href="'+f.d+'" download="'+esc(f.n)+'" data-a="none">'+esc(f.n)+'</a>';
   });
   var badges=pubBadge(t)+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+(NOTES[t.id]?'<span class="pr">Заметка</span>':'');
@@ -877,7 +888,7 @@ function toolTitle(id){
   return {log:'Журнал изменений',admins:'Администраторы',archive:'Архив заданий',backup:'Резервная копия',reset:'Сброс пароля',thumbs:'Превью фото'}[id]||'Настройки';
 }
 function atile(id,sub,badge){
-  return '<button class="atile" data-a="acctool" data-id="'+id+'"><span class="ati"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+AT_ICO[id]+'</svg></span><span class="att"><b>'+toolTitle(id).replace(/ \(\d+\)$/,'')+'</b><small>'+sub+'</small></span>'+(badge?'<span class="atb">'+badge+'</span>':'')+'</button>';
+  return '<button class="atile" data-a="acctool" data-id="'+id+'"><span class="ati"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+AT_ICO[id]+'</svg></span><span class="atx"><b>'+toolTitle(id).replace(/ \(\d+\)$/,'')+'</b><small>'+sub+'</small></span>'+(badge?'<span class="atb">'+badge+'</span>':'')+'</button>';
 }
 function adminGrid(){
   var na=S.tasks.filter(function(t){return t.archived}).length,nt=thumbMissing(),h='';
@@ -995,7 +1006,7 @@ function viewOpts(){
 function arcBefore(id){var v=$(id)&&$(id).value;return v?new Date(v+'T23:59:59'):null}
 function arcToArchive(d){return d?S.tasks.filter(function(t){return !t.archived&&t.due&&new Date(t.due)<d}):[]}
 function arcToPurge(d){return d?S.tasks.filter(function(t){return t.archived&&t.due&&new Date(t.due)<d}):[]}
-function arcFiles(){var n=0;S.tasks.forEach(function(t){if(t.archived)n+=(t.files||[]).length});return n}
+function arcFiles(){var n=0;S.tasks.forEach(function(t){if(t.archived)n+=fPaths(t.files).length});return n}
 function updArcCounts(){
   var a=$('aaCnt'),p=$('apCnt');
   if(a)a.textContent='Будет заархивировано: '+arcToArchive(arcBefore('aaDate')).length;
@@ -1040,7 +1051,7 @@ async function doPurge(){
 }
 async function doStripFiles(){
   aerr('');amsgs('');
-  var list=S.tasks.filter(function(t){return t.archived&&(t.files||[]).length});
+  var list=S.tasks.filter(function(t){return t.archived&&fPaths(t.files).length});
   if(!list.length){aerr('В архиве нет заданий с файлами');return}
   try{
     var ps=pathsOf(list),ids=list.map(function(t){return t.id});
@@ -1498,13 +1509,45 @@ async function delEv(el){
   }catch(e2){toast('Ошибка: '+(e2.message||e2))}
 }
 
+/* ---------- вложения-ссылки на материалы ---------- */
+function refOf(f){
+  if(!f||!f.ref)return null;
+  if(f.t==='ref/link'){var l=S.links.find(function(x){return x.id===f.ref});return l&&/^https?:\/\//i.test(l.url||'')?{href:l.url,n:l.title,k:'Ссылка'}:{n:f.n,k:'Ссылка',gone:1}}
+  var b=S.books.find(function(x){return x.id===f.ref});return b&&b.file&&b.file.d?{href:b.file.d,n:b.title,k:'Книга'}:{n:f.n,k:'Книга',gone:1};
+}
+function refChip(f,card){
+  var r=refOf(f);if(!r)return '';
+  if(r.gone)return card?'':'<span class="file ref gone" title="Материал удалён из раздела">'+esc(r.k+': '+r.n)+'</span> ';
+  return '<a class="file ref" href="'+esc(r.href)+'" target="_blank" rel="noopener noreferrer"'+(card?' data-a="none"':'')+'>'+esc(r.k+': '+r.n)+'</a> ';
+}
+function drawMat(){
+  var box=$('tMat');if(!box)return;
+  box.innerHTML='<input id="tMatQ" placeholder="Найти книгу или ссылку" autocomplete="off" style="margin-bottom:8px"><div id="tMatL" class="matl"></div>';
+  drawMatList();
+}
+function drawMatList(){
+  var L=$('tMatL');if(!L)return;
+  var q=($('tMatQ')?$('tMatQ').value:'').toLowerCase().trim(),sid=$('tSub')?$('tSub').value:'';
+  var rank=function(x){return x.sid===sid?0:!x.sid?1:2};
+  var srt=function(a,b){return rank(a)-rank(b)||String(a.title).localeCompare(String(b.title),'ru')};
+  var bs=S.books.filter(function(b){return !q||bookMatch(b,q)}).sort(srt),ls=S.links.filter(function(l){return !q||linkMatch(l,q)}).sort(srt);
+  var on=function(k,id){return files.some(function(f){return f.ref===id&&f.t==='ref/'+k})};
+  var sn=function(x){var s2=subj(x.sid);return s2?s2.name:'Общая'};
+  var row=function(k,x,sub){var o=on(k,x.id);return '<button type="button" class="mrow'+(o?' on':'')+'" data-a="matpick" data-k="'+k+'" data-id="'+x.id+'" aria-pressed="'+o+'"><span style="min-width:0"><b>'+esc(x.title)+'</b><small>'+esc(sub)+'</small></span><i class="mck">'+(o?'✓':'')+'</i></button>'};
+  var h='';
+  if(bs.length)h+='<div class="matg">Литература</div>'+bs.map(function(b){return row('book',b,[b.author,b.kind,sn(b)].filter(Boolean).join(' · '))}).join('');
+  if(ls.length)h+='<div class="matg">Ссылки</div>'+ls.map(function(l){return row('link',l,[host(l.url),sn(l)].filter(Boolean).join(' · '))}).join('');
+  L.innerHTML=h||'<div class="sub">'+(q?'Ничего не найдено.':'В разделе «Материалы» пока ничего нет.')+'</div>';
+}
+
 /* ---------- просмотр задания ---------- */
 function linkify(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,function(u){return '<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+u+'</a>'})}
 function openView(id){
   var t=S.tasks.find(function(x){return x.id===id});if(!t)return;
   var s=subj(t.sid)||{name:'Без дисциплины',color:'#8a8f98',lessons:[]},di=dueInfo(t);
-  var imgs='',fl='',teachers=[];
+  var imgs='',fl='',rl='',teachers=[];
   (t.files||[]).forEach(function(f,i){
+    if(f.ref){rl+=refChip(f);return}
     if(f.t.indexOf('image/')===0)imgs+='<img class="vimg" data-a="zoom" data-id="'+t.id+'" data-i="'+i+'" src="'+esc(f.d)+'" alt="'+esc(f.n)+'">';
     else fl+='<a class="file" href="'+esc(f.d)+'" target="_blank" rel="noopener noreferrer">'+esc(f.n)+'</a> ';
   });
@@ -1515,6 +1558,7 @@ function openView(id){
   $('dViewB').innerHTML='<div class="meta" style="margin:0;--c:'+s.color+'"><span class="chip">'+esc(s.name)+'</span><span class="due '+di.cls+'">'+di.txt+'</span>'+(t.prio==='h'?'<span class="pr h">Важно</span>':t.prio==='l'?'<span class="pr">Не срочно</span>':'')+(t.done?'<span class="pr" style="border-color:var(--ok);color:var(--ok)">Выполнено</span>':'')+'</div>'+
   ((t.teacher||teachers.length)?'<div><div class="vsec">'+(t.teacher?'Преподаватель':'Преподаватели')+'</div>'+esc(t.teacher||teachers.join(', '))+'</div>':'')+
   '<div><div class="vsec">Описание</div><div class="vdesc">'+(t.desc?linkify(t.desc):'<span style="color:var(--mut)">Описание не добавлено</span>')+'</div></div>'+
+  (rl?'<div><div class="vsec">Из материалов</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+rl+'</div></div>':'')+
   (fl?'<div><div class="vsec">Файлы</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+fl+'</div></div>':'')+
   (imgs?'<div><div class="vsec">Фото</div><div class="vimgs">'+imgs+'</div></div>':'')+noteH;
   $('dViewF').innerHTML='<button class="btn" data-a="close" data-t="dView">Закрыть</button>'+copyBtn('task',t.id)+'<button class="btn pri" data-a="toggleV" data-id="'+t.id+'">'+(t.done?'Вернуть в активные':'Отметить выполненным')+'</button>';
@@ -1537,13 +1581,13 @@ function openTask(id){
   '<label>Дедлайн<input type="datetime-local" id="tDue" value="'+(t?(t.due||''):toLocal(d))+'"></label>'+
   '<div class="quick"><button class="btn sm" data-a="q" data-id="0">Сегодня</button><button class="btn sm" data-a="q" data-id="1">Завтра</button><button class="btn sm" data-a="q" data-id="3">Через 3 дня</button><button class="btn sm" data-a="q" data-id="7">Через неделю</button><button class="btn sm" data-a="q" data-id="x">Без срока</button></div>'+
   '<label>Описание<textarea id="tDesc" placeholder="Что нужно сделать, номера задач, ссылки">'+esc(t?t.desc:'')+'</textarea></label>'+
-  pubH('t',t)+'<label style="display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="tArch" style="width:auto"'+(t&&t.archived?' checked':'')+'>В архиве (скрыто из основного списка)</label>'+'<div><div class="drop" id="drop" data-a="pick">Перетащите фото или файлы сюда, нажмите, чтобы выбрать, или вставьте из буфера</div><input type="file" id="tFile" accept="image/*,.pdf,.doc,.docx,.txt" multiple hidden></div><div class="att" id="tAtt"></div>';
+  pubH('t',t)+'<label style="display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px"><input type="checkbox" id="tArch" style="width:auto"'+(t&&t.archived?' checked':'')+'>В архиве (скрыто из основного списка)</label>'+'<div><div class="drop" id="drop" data-a="pick">Перетащите фото или файлы сюда, нажмите, чтобы выбрать, или вставьте из буфера</div><input type="file" id="tFile" accept="image/*,.pdf,.doc,.docx,.txt" multiple hidden></div><button type="button" class="btn sm" data-a="matToggle" style="justify-self:start">Прикрепить из материалов</button><div id="tMat" hidden></div><div class="att" id="tAtt"></div>';
   $('dTaskF').innerHTML=(t?'<button class="btn dng" data-a="delTask" style="margin-right:auto">Удалить</button>':'')+(t?copyBtn('task',t.id):'')+'<button class="btn" data-a="close" data-t="dTask">Отмена</button><button class="btn pri" data-a="saveTask">Сохранить</button>';
   drawAtt();$('dTask').showModal();
 }
 function drawAtt(){
   $('tAtt').innerHTML=files.map(function(f,i){
-    return '<div>'+(f.t.indexOf('image/')===0?'<img class="th" data-a="zoomF" data-i="'+i+'" src="'+f.d+'" alt="'+esc(f.n)+'">':'<span class="file">'+esc(f.n)+'</span>')+'<button class="x" data-a="rmF" data-i="'+i+'" aria-label="Убрать вложение">×</button></div>';
+    return '<div>'+(f.ref?'<span class="file ref'+(refOf(f).gone?' gone':'')+'">'+esc(refOf(f).k+': '+refOf(f).n)+'</span>':f.t.indexOf('image/')===0?'<img class="th" data-a="zoomF" data-i="'+i+'" src="'+f.d+'" alt="'+esc(f.n)+'">':'<span class="file">'+esc(f.n)+'</span>')+'<button class="x" data-a="rmF" data-i="'+i+'" aria-label="Убрать вложение">×</button></div>';
   }).join('');
 }
 function comp(f){
@@ -1579,6 +1623,7 @@ async function saveTask(){
     var out=[],bk=sb.storage.from('homework');
     for(var i=0;i<files.length;i++){
       var f=files[i];
+      if(f.ref){out.push({n:f.n,t:f.t,ref:f.ref});continue}
       if(f.d.indexOf('data:')===0){
         var blob=await (await fetch(f.d)).blob();
         var ext=(f.n.split('.').pop()||'bin').replace(/[^a-z0-9]/gi,'').slice(0,5)||'bin';
@@ -1828,6 +1873,8 @@ document.addEventListener('click',function(e){
   else if(a==='avreset'){delete PROFILE.avatar;afterProfile()}
   else if(a==='accset'){ui.accView='set';drawAcc();if(OWNER)loadAdmins()}
   else if(a==='accback'){armed=false;ui.accView=(ui.accView||'').indexOf('t:')===0?'set':'ov';drawAcc();$('dDataB').scrollTop=0}
+  else if(a==='matToggle'){var mp=$('tMat');mp.hidden=!mp.hidden;if(!mp.hidden){drawMat();$('tMatQ').focus()}}
+  else if(a==='matpick'){var mk=el.dataset.k,mi=-1;files.forEach(function(f,i2){if(f.ref===id&&f.t==='ref/'+mk)mi=i2});if(mi>=0)files.splice(mi,1);else{var ms=(mk==='link'?S.links:S.books).find(function(x){return x.id===id});if(ms)files.push({n:ms.title,t:'ref/'+mk,ref:id})}drawAtt();drawMatList()}
   else if(a==='fs'){PROFILE.fs=id;applyProfile();saveDone();drawAcc()}
   else if(a==='acctool'){armed=false;ui.accView='t:'+id;drawAcc();$('dDataB').scrollTop=0;if(id==='admins'&&OWNER)loadAdmins()}
   else if(a==='install'){
@@ -1935,6 +1982,7 @@ document.addEventListener('input',function(e){
 document.addEventListener('toggle',function(e){if(e.target.id==='acSet')ui.setOpen=e.target.open},true);
 window.addEventListener('hashchange',openHash);
 try{matchMedia('(max-width:820px)').addEventListener('change',function(){render()})}catch(e){}
+document.addEventListener('input',function(e){if(e.target&&e.target.id==='tMatQ')drawMatList()});
 document.addEventListener('paste',function(e){var f=[].filter.call((e.clipboardData||{}).files||[],function(x){return x.type.indexOf('image/')===0});if(f.length){if($('dEv').open)addEvFiles(f);else addFiles(f)}});
 document.addEventListener('dragover',function(e){var d=$('drop');if(d&&d.contains(e.target)){e.preventDefault();d.classList.add('over')}});
 document.addEventListener('dragleave',function(e){var d=$('drop');if(d)d.classList.remove('over')});
