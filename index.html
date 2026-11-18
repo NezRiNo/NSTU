@@ -315,6 +315,21 @@ dialog::backdrop{animation:fade .3s}
 .tbi{position:absolute;top:0;left:0;width:25%;height:2px;background:var(--acc);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 @media (min-width:821px){dialog[open]:not(#lb){animation:popIn .22s ease-out}}
 [hidden]{display:none!important}
+.fsg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fst{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;padding:12px 6px 10px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-height:84px;transition:background .15s,border-color .15s,transform .1s}
+.fst small{font-size:12px;color:var(--mut);text-align:center;line-height:1.2}
+.fst:hover{background:var(--acc2)}.fst:active{transform:scale(.97)}
+.fst.on{border-color:var(--acc);background:var(--acc2);color:var(--acc)}.fst.on small{color:var(--acc)}
+.ovh{display:flex;align-items:center;gap:16px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.ring{position:relative;width:84px;height:84px;flex:none}.ring svg{transform:rotate(-90deg);display:block}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;font-weight:600}
+.ovt b{display:block;font-size:18px;font-weight:600;line-height:1.2}.ovt span{display:block;color:var(--mut);font-size:13px;margin-top:4px}
+.ovs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ovc{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:10px 12px}
+.ovc b{display:block;font-size:22px;font-weight:600;line-height:1.1}.ovc span{font-size:12px;color:var(--mut)}.ovc.bad b{color:var(--bad)}
+.dsr{display:grid;gap:5px}.dsrt{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.dsrt span:first-child{min-width:0;overflow-wrap:anywhere;display:flex;gap:8px;align-items:center}.dsrt span:last-child{color:var(--mut);flex:none}
+.dsrb{height:6px;border-radius:6px;background:var(--line);overflow:hidden}.dsrb i{display:block;height:100%;border-radius:6px}
 .agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .atile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card);min-height:96px;transition:background .15s,border-color .15s,transform .1s}
 .atile:hover{background:var(--acc2);border-color:var(--acc)}
@@ -1088,23 +1103,31 @@ function soonList(){
   return it.slice(0,10);
 }
 function accOverview(){
-  var st=myStats();
-  var h='<div class="sline" style="margin:0"><span class="sc"><i class="sd" style="background:var(--ink)"></i><b>'+st.a+'</b> активных</span><span class="sc'+(st.o?' bad':' dim')+'"><i class="sd" style="background:var(--bad)"></i><b>'+st.o+'</b> просрочено</span><span class="sc"><i class="sd" style="background:#1e88e5"></i><b>'+st.w+'</b> на 7 дней</span><span class="sc"><i class="sd" style="background:var(--ok)"></i><b>'+st.d+'</b> из '+st.all+' выполнено</span></div>';
-  var all=soonList(),row=function(x){return '<button class="soon" data-a="soon" data-k="'+x.k+'" data-id="'+x.id+'"><i class="sd" style="background:'+x.c+'"></i><span style="flex:1;min-width:0"><b>'+esc(x.title)+'</b><br><span class="ld due '+(x.cls||'')+'">'+esc(x.label)+'</span></span></button>'};
-  var tk=all.filter(function(x){return x.k==='task'}).slice(0,5),evs=all.filter(function(x){return x.k==='ev'}).slice(0,3);
-  h+='<div><div class="vsec">Ближайшие работы</div>'+(tk.length?tk.map(row).join(''):'<div class="sub">На ближайшую неделю работ нет.</div>')+'</div>';
-  if(evs.length)h+='<div><div class="vsec">События</div>'+evs.map(row).join('')+'</div>';
+  var st=myStats(),pc=st.all?Math.round(st.d/st.all*100):0,C=2*Math.PI*34;
+  var msg=!st.all?'Заданий пока нет':st.d===st.all?'Всё сдано. Можно выдохнуть.':st.o?'Просрочено: '+st.o+'. Начните с них.':st.w?'На ближайшие 7 дней: '+st.w:'Срочного нет, хороший момент забежать вперёд.';
+  var h='<div class="ovh"><div class="ring"><svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="34" fill="none" stroke="var(--line)" stroke-width="8"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--ok)" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+(C*pc/100).toFixed(1)+' '+C.toFixed(1)+'"/></svg><b>'+pc+'%</b></div><div class="ovt"><b>'+st.d+' из '+st.all+' сдано</b><span>'+msg+'</span></div></div>';
+  h+='<div class="ovs"><div class="ovc"><b>'+st.a+'</b><span>активных</span></div><div class="ovc'+(st.o?' bad':'')+'"><b>'+st.o+'</b><span>просрочено</span></div><div class="ovc"><b>'+st.w+'</b><span>на 7 дней</span></div></div>';
+  var rows=S.subjects.map(function(sj){
+    var L=S.tasks.filter(function(t){return t.sid===sj.id&&isLive(t)}),d=L.filter(function(t){return t.done}).length;
+    return L.length?'<div class="dsr"><div class="dsrt"><span><i class="sd" style="background:'+esc(sj.color)+'"></i>'+esc(sj.name)+'</span><span>'+d+'/'+L.length+'</span></div><div class="dsrb"><i style="width:'+Math.round(d/L.length*100)+'%;background:'+esc(sj.color)+'"></i></div></div>':'';
+  }).join('');
+  if(rows)h+='<div style="display:grid;gap:10px"><div class="vsec">По дисциплинам</div>'+rows+'</div>';
   var ng=S.events.filter(function(e){return GOING[e.id]&&!evPast(e)}).length,nt=S.tasks.filter(function(t){return isLive(t)&&!t.done&&t.due&&new Date(t.due)>new Date()}).length;
-  h+='<div class="sub">В календарь телефона с напоминаниями: <button class="lnk" data-a="icsGo" style="padding:0 4px">события «Иду» ('+ng+')</button><button class="lnk" data-a="icsTasks" style="padding:0 4px">мои дедлайны ('+nt+')</button></div>';
+  h+='<div style="display:grid;gap:8px"><div class="vsec">В календарь телефона</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="icsTasks">Мои дедлайны ('+nt+')</button><button class="btn sm" data-a="icsGo">События «Иду» ('+ng+')</button></div><div class="sub">Файл .ics с напоминаниями за день и за несколько часов.</div></div>';
   return h;
+}
+function fsPicker(cur){
+  var o=[['m','Обычный',16],['l','Крупный',20],['xl','Очень крупный',24]];
+  return '<div style="display:grid;gap:8px"><div class="vsec">Размер текста</div><div class="fsg">'+o.map(function(x){
+    return '<button type="button" class="fst'+(cur===x[0]?' on':'')+'" data-a="fs" data-id="'+x[0]+'" aria-pressed="'+(cur===x[0])+'"><span style="font-size:'+x[2]+'px;font-weight:600;line-height:1">Аа</span><small>'+x[1]+'</small></button>';
+  }).join('')+'</div></div>';
 }
 function accSettings(){
   var P=PROFILE,hasAv=!!(P.avatar&&P.avatar.t==='img');
   var sel=function(id,label,opts,val){return '<label>'+label+'<select id="'+id+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===val?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></label>'};
   return '<div style="display:grid;gap:12px">'+
   '<div style="display:flex;gap:12px;align-items:center">'+(hasAv?avatarH(44):'')+'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="avpick">'+(hasAv?'Заменить фото':'Добавить фото')+'</button>'+(hasAv?'<button class="btn sm" data-a="avreset">Убрать</button>':'')+'</div></div><input type="file" id="avFile" accept="image/*" hidden>'+
-  '<div class="r2">'+sel('sTheme','Тема',[['auto','Как в телефоне'],['light','Светлая'],['dark','Тёмная']],P.theme||'auto')+sel('sFs','Размер текста',[['m','Обычный'],['l','Крупный'],['xl','Очень крупный']],P.fs||'m')+'</div>'+
-  sel('sTab','Стартовая вкладка',[['tasks','Задания'],['books','Материалы'],['teachers','Преподаватели'],['events','Афиша']],P.tab||'tasks')+
+  fsPicker(P.fs||'m')+
   viewOpts()+
   (ADMIN?adminGrid():'')+(canInstall()?'<div><button class="btn sm" data-a="install">Установить приложение</button></div>':'')+'<div style="display:flex;gap:14px;flex-wrap:wrap"><button class="lnk" data-a="chpw" style="padding:0">Сменить пароль</button>'+(ADMIN?'':'<button class="lnk" data-a="delacc" style="padding:0;color:var(--bad)">Удалить аккаунт</button>')+'</div></div>';
 }
@@ -1189,7 +1212,7 @@ async function autoPurge(){
 function logTools(){
   var rows=(LOGROWS||[]).map(function(r){
     var d=new Date(r.at);
-    return '<div class="lgrow"><span><b>'+esc(LGA[r.action]||r.action)+': '+esc(LGK[r.table_name]||r.table_name)+' «'+esc(r.title)+'»</b><small>'+esc(d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+', '+fmtT(d)+', '+shownName({email:r.actor_name}))+'</small></span></div>';
+    return '<div class="lgrow"><span><b>'+esc(LGA[r.action]||r.action)+': '+esc(LGK[r.table_name]||r.table_name)+' «'+esc(r.title)+'»</b><small>'+esc(d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+', '+fmtT(d)+', '+shownName({email:r.actor_name||r.actor}))+'</small></span></div>';
   }).join('');
   var body=OPTS.log?(LOGROWS?(rows||'<div class="sub">Записей нет.</div>'):'<button class="btn sm" data-a="logload" style="justify-self:start">Показать последние записи</button>')+'<div class="sub">Журнал ведёт сама база, хранится 180 дней.</div>':'<div class="sub">Журнал выключен.</div>';
   return '<div style="'+BOX+'">'+optSw('log')+body+'</div>';
@@ -1740,7 +1763,7 @@ async function afterAuth(){
   document.body.classList.toggle('admin',ADMIN);
   await loadMine();
   applyProfile();
-  if(USER&&!ui.startDone){ui.startDone=true;if(PROFILE.tab&&PROFILE.tab!==ui.tab&&!ui.q)ui.tab=PROFILE.tab}
+  if(USER&&!ui.startDone){ui.startDone=true;}
   refreshAuthBtn();
   S.tasks.forEach(function(t){t.done=!!DONE[t.id]});
   render();
@@ -1805,6 +1828,7 @@ document.addEventListener('click',function(e){
   else if(a==='avreset'){delete PROFILE.avatar;afterProfile()}
   else if(a==='accset'){ui.accView='set';drawAcc();if(OWNER)loadAdmins()}
   else if(a==='accback'){armed=false;ui.accView=(ui.accView||'').indexOf('t:')===0?'set':'ov';drawAcc();$('dDataB').scrollTop=0}
+  else if(a==='fs'){PROFILE.fs=id;applyProfile();saveDone();drawAcc()}
   else if(a==='acctool'){armed=false;ui.accView='t:'+id;drawAcc();$('dDataB').scrollTop=0;if(id==='admins'&&OWNER)loadAdmins()}
   else if(a==='install'){
     if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;updInstall()})}
@@ -1904,7 +1928,6 @@ document.addEventListener('input',function(e){
   else if(el.id==='tSub'){var tt=$('tTeach');if(tt)tt.innerHTML=teacherOpts(el.value,'')}
   else if(el.id==='aaDate'||el.id==='apDate'){updArcCounts()}
   else if(/^[te]PubMode$/.test(el.id)){var pw=$(el.id.charAt(0)+'PubWrap');if(pw)pw.style.display=el.value==='sched'?'':'none'}
-  else if(/^s(Theme|Fs|Tab)$/.test(el.id)){PROFILE[{sTheme:'theme',sFs:'fs',sTab:'tab'}[el.id]]=el.value;applyProfile();saveDone()}
   else if(el.id==='vNote'){if(el.value.trim())NOTES[ui.viewId]=el.value;else delete NOTES[ui.viewId];saveDone()}
   else if(el.id==='q'){ui.q=el.value;render()}
   else if(el.id==='cpick'){pickC=el.value;[].forEach.call(document.querySelectorAll('#sw button'),function(b){b.classList.remove('on')});el.parentNode.classList.add('on')}
