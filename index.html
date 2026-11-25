@@ -318,6 +318,9 @@ dialog::backdrop{animation:fade .3s}
 .bi{display:none;flex:none}
 body.ic .bi{display:inline-block;vertical-align:-3px}
 body.ic .bt{display:none}
+/* Афиша сохраняет полный вид в режиме «Иконки вместо подписей» */
+body.ic .ban2 .bt{display:flex}
+body.ic .ban2 .bi{display:grid}
 body.ic .btn:has(>.bi),body.ic .seg button:has(>.bi){display:inline-flex;align-items:center;justify-content:center;gap:0}
 body.ic .seg button:has(>.bi){min-width:46px}
 body.ic .btn.pri:has(>.bi){min-width:44px;padding-left:12px;padding-right:12px}
