@@ -455,7 +455,7 @@ async function load(){
   S.tasks=live(b.data,'task','title').map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,desc:r.descr,due:r.due?toLocal(new Date(r.due)):'',prio:r.prio,teacher:r.teacher||'',archived:!!r.archived,draft:!!r.draft,publishAt:r.publish_at?toLocal(new Date(r.publish_at)):'',done:!!DONE[r.id],files:r.files||[]}});
   S.books=live(c.data,'book','title').map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,author:r.author,kind:r.kind,file:r.file||{}}});
   S.links=live(d.data,'link','title').map(function(r){return {id:r.id,sid:r.subject_id,title:r.title,url:r.url,desc:r.descr,cat:r.category}});
-  S.teachers=e2.error?[]:live(e2.data,'teacher','name').map(function(r){return {id:r.id,name:r.name,dept:r.dept,email:r.email,phone:r.phone,room:r.room,consult:r.consult,notes:r.notes,subject_ids:r.subject_ids||[],consults:r.consults||[]}});
+  S.teachers=e2.error?[]:live(e2.data,'teacher','name').map(function(r){return {id:r.id,name:r.name,dept:r.dept,email:r.email,phone:r.phone,room:r.room,consult:r.consult,notes:r.notes,subject_ids:r.subject_ids||[],consults:r.consults||[],grade_breakdown:Array.isArray(r.grade_breakdown)?r.grade_breakdown:[]}});
   S.events=e3.error?[]:live(e3.data,'event','title').map(function(r){return {id:r.id,kind:r.kind,title:r.title,desc:r.descr,start:r.start_at?toLocal(new Date(r.start_at)):'',place:r.place,regDeadline:r.reg_deadline?toLocal(new Date(r.reg_deadline)):'',regUrl:r.reg_url,sid:r.subject_id,files:r.files||[],pinned:!!r.pinned,draft:!!r.draft,publishAt:r.publish_at?toLocal(new Date(r.publish_at)):''}});
   GOING_N=(!e4.error&&e4.data)?e4.data:{};
   S.trash=TR.sort(function(x,y){return new Date(y.at)-new Date(x.at)});
