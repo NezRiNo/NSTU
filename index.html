@@ -795,15 +795,32 @@ function parseGradeLines(text){
   }).filter(Boolean).sort(function(a,b){return a.points-b.points});
 }
 function gradeText(rows){return (rows||[]).map(function(x){return x.points+' - '+x.grade}).join('\n')}
-function saveTeacherGrades(name,rows){
-  var key=gradeKey(name);
-  if(rows&&rows.length)TEACHER_GRADES[key]=rows;else delete TEACHER_GRADES[key];
-  try{localStorage.setItem('uchyoba-teacher-grades',JSON.stringify(TEACHER_GRADES))}catch(e){}
-}
-function teacherGradeBlock(name){
-  var rows=TEACHER_GRADES[gradeKey(name)]||[];
+function teacherGradeBlock(source){
+  var rows=Array.isArray(source)?source:[];
+  rows=rows.filter(function(x){return x&&Number.isFinite(Number(x.points))&&Number(x.points)>=0&&['3','4','5'].indexOf(String(x.grade))>=0}).slice().sort(function(a,b){return Number(a.points)-Number(b.points)});
   if(!rows.length)return '';
   return '<div class="gradebox"><div class="gradehead">Разбалловка</div><div class="graderows">'+rows.map(function(x){var g=String(x.grade);return '<span class="gradeitem g'+esc(g)+'">'+esc(x.points)+' баллов <b>'+esc(g)+'</b></span>'}).join('')+'</div></div>';
+}
+async function migrateLegacyTeacherGrades(){
+  if(!ADMIN||!sb||!Object.keys(TEACHER_GRADES).length)return;
+  var unresolved=false,changed=false;
+  try{
+    for(var key of Object.keys(TEACHER_GRADES)){
+      var teacher=S.teachers.find(function(t){return gradeKey(t.name)===key});
+      if(!teacher){unresolved=true;continue}
+      if(Array.isArray(teacher.grade_breakdown)&&teacher.grade_breakdown.length)continue;
+      var rows=TEACHER_GRADES[key];
+      if(!Array.isArray(rows)||!rows.length)continue;
+      var r=await sb.from('teachers').update({grade_breakdown:rows}).eq('id',teacher.id);
+      if(r.error)throw r.error;
+      changed=true;
+    }
+    if(!unresolved){
+      localStorage.removeItem('uchyoba-teacher-grades');
+      TEACHER_GRADES={};
+    }
+    if(changed)await load();
+  }catch(e){toast('Не удалось перенести старую разбалловку: '+(e.message||e))}
 }
 var gradeEditRows=[];
 function readGradeEditor(){
@@ -848,7 +865,7 @@ function teacherH(o){
   var chips=keys.map(function(k){var x=o.subs[k];return '<span class="chip" style="--c:'+x.s.color+'">'+esc(x.s.name)+(x.types.length?': '+esc(x.types.join(', ').toLowerCase()):'')+'</span>'}).join(' ');
   var row=function(t,v){return v?'<div class="trow"><small>'+t+'</small>'+v+'</div>':''};
   return '<div class="tcard" style="--c:'+c+'"><div style="display:flex;gap:12px;align-items:center"><div class="av">'+esc(ini)+'</div><div style="min-width:0"><div class="lt">'+esc(o.name)+'</div>'+(r.dept?'<div class="ld">'+esc(r.dept)+'</div>':'')+'</div></div>'+(chips?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+chips+'</div>':'')+
-  row('Консультации и пересдачи',consBlock(r))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+teacherGradeBlock(o.name)+
+  row('Консультации и пересдачи',consBlock(r))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+teacherGradeBlock(r.grade_breakdown)+
   '<div style="margin-top:10px"><button class="btn sm adm" data-a="editTeach" data-id="'+(o.rec?o.rec.id:'')+'" data-n="'+esc(o.name)+'">'+(o.rec?'Изменить':'Дополнить данные')+'</button></div></div>';
 }
 function renderTeachers(){
@@ -912,7 +929,7 @@ function openTeach(id,name){
   '<div><div class="vsec">Консультации, пересдачи, приём</div><div id="consL" style="display:grid;gap:10px"></div><button class="btn sm" data-a="addCons" style="margin-top:8px">Добавить строку</button></div>'+
   '<label>Примечание к приёму<textarea id="pCons" style="min-height:60px" placeholder="Например, писать за день до встречи">'+v('consult')+'</textarea></label>'+
   '<label>Заметки<textarea id="pNotes" style="min-height:60px" placeholder="Как лучше связаться, особенности приёма">'+v('notes')+'</textarea></label>';
-  gradeEditRows=(TEACHER_GRADES[gradeKey(r?r.name:name||'')]||[]).map(function(x){return {points:String(x.points),grade:String(x.grade)}});
+  gradeEditRows=(r&&Array.isArray(r.grade_breakdown)?r.grade_breakdown:[]).map(function(x){return {points:String(x.points),grade:String(x.grade)}});
   drawPills();drawCons();drawGradeEditor();
   $('dTeachF').innerHTML=(r?'<button class="btn dng" data-a="delTeach" style="margin-right:auto">Удалить</button>':'')+'<button class="btn" data-a="close" data-t="dTeach">Отмена</button><button class="btn pri" data-a="saveTeach">Сохранить</button>';
   $('dTeach').showModal();
@@ -921,11 +938,10 @@ async function saveTeach(){
   var name=$('pName').value.trim();
   if(!name){$('pName').focus();toast('Введите ФИО');return}
   var grades=collectGradeRows();if(grades===null)return;
-  var row={name:name,dept:$('pDept').value.trim(),email:$('pMail').value.trim(),phone:$('pPhone').value.trim(),room:$('pRoom').value.trim(),consult:$('pCons').value.trim(),notes:$('pNotes').value.trim(),subject_ids:tsel,consults:cons};
+  var row={name:name,dept:$('pDept').value.trim(),email:$('pMail').value.trim(),phone:$('pPhone').value.trim(),room:$('pRoom').value.trim(),consult:$('pCons').value.trim(),notes:$('pNotes').value.trim(),subject_ids:tsel,consults:cons,grade_breakdown:grades};
   try{
     var r=ui.editP?await sb.from('teachers').update(row).eq('id',ui.editP):await sb.from('teachers').insert(row);
     if(r.error)throw r.error;
-    saveTeacherGrades(name,grades);
     $('dTeach').close();await load();render();toast('Сохранено');
   }catch(e){toast('Ошибка: '+(e.message||e))}
 }
@@ -1985,6 +2001,7 @@ async function afterAuth(){
   if(ADMIN&&!ui.purged){ui.purged=true;autoPurge()}
   document.body.classList.toggle('admin',ADMIN);
   await loadMine();
+  if(ADMIN)await migrateLegacyTeacherGrades();
   applyProfile();
   if(USER&&!ui.startDone){ui.startDone=true;}
   refreshAuthBtn();
