@@ -178,7 +178,7 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .tcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--sh);border-left:5px solid var(--c);min-width:0}
 .av{width:40px;height:40px;border-radius:50%;background:color-mix(in srgb,var(--c) 20%,transparent);display:grid;place-items:center;font-weight:700;flex:none}
 .trow{font-size:14px;margin-top:8px;overflow-wrap:anywhere}.trow small{display:block;color:var(--mut);font-size:12px}.trow a{color:var(--acc)}
-.gradebox{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:13px}.gradehead{color:var(--mut);font-size:12px;margin-bottom:5px}.graderows{display:flex;flex-wrap:wrap;gap:5px}.gradeitem{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);white-space:nowrap}.gradeitem b{font-weight:650}.gradeempty{color:var(--mut);font-size:12px}
+.gradebox{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:13px}.gradehead{color:var(--mut);font-size:12px;margin-bottom:5px}.graderows{display:flex;flex-wrap:wrap;gap:5px}.gradeitem{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);white-space:nowrap}.gradeitem b{font-weight:650}.gradeitem.g3 b{color:var(--ok)}.gradeitem.g4 b{color:#b38a00}.gradeitem.g5 b{color:var(--bad)}:root[data-theme="dark"] .gradeitem.g4 b{color:#f2cf54}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .gradeitem.g4 b{color:#f2cf54}}.gradeedit{display:grid;gap:8px}.graderow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}.graderow label{min-width:0}.graderow select,.graderow input{width:100%;min-width:0}.gradeedithead{display:grid;grid-template-columns:1fr 1fr 34px;gap:8px;color:var(--mut);font-size:12px}.gradeempty{color:var(--mut);font-size:12px}
 @media (max-width:820px){.srow .seg button{font-size:13px;padding:9px 4px;white-space:nowrap}}
 #dTeach{width:min(680px,94vw)}
 .pills{display:flex;flex-wrap:wrap;gap:8px}
@@ -787,22 +787,45 @@ try{TEACHER_GRADES=JSON.parse(localStorage.getItem('uchyoba-teacher-grades')||'{
 function gradeKey(name){return nk(name)}
 function parseGradeLines(text){
   return String(text||'').split(/\n/).map(function(line){
-    var m=line.trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:-|–|—|:)\s*(.+)$/);
+    var m=line.trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:-|–|—|:)\s*([345])$/);
     if(!m)return null;
-    var pts=Number(m[1].replace(',','.')),grade=m[2].trim();
-    if(!Number.isFinite(pts)||pts<0||!grade)return null;
+    var pts=Number(m[1].replace(',','.')),grade=m[2];
+    if(!Number.isFinite(pts)||pts<0)return null;
     return {points:pts,grade:grade};
   }).filter(Boolean).sort(function(a,b){return a.points-b.points});
 }
 function gradeText(rows){return (rows||[]).map(function(x){return x.points+' - '+x.grade}).join('\n')}
-function saveTeacherGrades(name,text){
-  var key=gradeKey(name),rows=parseGradeLines(text);
-  if(rows.length)TEACHER_GRADES[key]=rows;else delete TEACHER_GRADES[key];
+function saveTeacherGrades(name,rows){
+  var key=gradeKey(name);
+  if(rows&&rows.length)TEACHER_GRADES[key]=rows;else delete TEACHER_GRADES[key];
   try{localStorage.setItem('uchyoba-teacher-grades',JSON.stringify(TEACHER_GRADES))}catch(e){}
 }
 function teacherGradeBlock(name){
   var rows=TEACHER_GRADES[gradeKey(name)]||[];
-  return '<div class="gradebox"><div class="gradehead">Разбалловка</div>'+(rows.length?'<div class="graderows">'+rows.map(function(x){return '<span class="gradeitem">'+esc(x.points)+' баллов <b>→ '+esc(x.grade)+'</b></span>'}).join('')+'</div>':'<div class="gradeempty">Не указана</div>')+'</div>';
+  if(!rows.length)return '';
+  return '<div class="gradebox"><div class="gradehead">Разбалловка</div><div class="graderows">'+rows.map(function(x){var g=String(x.grade);return '<span class="gradeitem g'+esc(g)+'">'+esc(x.points)+' баллов <b>→ '+esc(g)+'</b></span>'}).join('')+'</div></div>';
+}
+var gradeEditRows=[];
+function readGradeEditor(){
+  var root=$('pGradeRows');if(!root)return gradeEditRows.slice();
+  return Array.prototype.map.call(root.querySelectorAll('.graderow'),function(row){return {points:row.querySelector('[data-g="points"]').value.trim(),grade:row.querySelector('[data-g="grade"]').value}});
+}
+function drawGradeEditor(){
+  var root=$('pGradeRows');if(!root)return;
+  root.innerHTML=gradeEditRows.map(function(x,i){return '<div class="graderow"><label><span class="vsec">Баллы</span><input data-g="points" inputmode="decimal" placeholder="Например, 50" value="'+esc(x.points===undefined?'':x.points)+'"></label><label><span class="vsec">Оценка</span><select data-g="grade"><option value="3"'+(String(x.grade)==='3'?' selected':'')+'>3</option><option value="4"'+(String(x.grade)==='4'?' selected':'')+'>4</option><option value="5"'+(String(x.grade)==='5'?' selected':'')+'>5</option></select></label><button class="btn sm" type="button" title="Удалить строку" aria-label="Удалить строку" data-a="gradeRm" data-i="'+i+'">×</button></div>'}).join('');
+}
+function addGradeRow(){gradeEditRows=readGradeEditor().map(function(x){return {points:x.points,grade:x.grade}});gradeEditRows.push({points:'',grade:'3'});drawGradeEditor()}
+function removeGradeRow(i){gradeEditRows=readGradeEditor().map(function(x){return {points:x.points,grade:x.grade}});gradeEditRows.splice(i,1);drawGradeEditor()}
+function collectGradeRows(){
+  var raw=readGradeEditor(),out=[];
+  for(var i=0;i<raw.length;i++){
+    var x=raw[i];if(!String(x.points).trim())continue;
+    var pts=Number(String(x.points).replace(',','.'));
+    if(!Number.isFinite(pts)||pts<0){toast('Укажите корректное число баллов');return null;}
+    if(['3','4','5'].indexOf(String(x.grade))<0){toast('Выберите оценку 3, 4 или 5');return null;}
+    out.push({points:pts,grade:String(x.grade)});
+  }
+  out.sort(function(a,b){return a.points-b.points});return out;
 }
 function nk(n){return String(n).toLowerCase().replace(/[.,]/g,' ').replace(/\s+/g,' ').trim()}
 function teacherList(){
@@ -882,25 +905,27 @@ function openTeach(id,name){
   $('dTeachH').textContent=r?'Данные преподавателя':'Преподаватель';
   $('dTeachB').innerHTML='<label>ФИО<input id="pName" placeholder="Иванова Е. П." value="'+(r?esc(r.name):esc(name||''))+'"></label><div class="sub">Пишите ФИО так же, как в занятиях, тогда карточка свяжется с дисциплинами. Публикуйте только рабочие контакты.</div>'+
   '<label>Кафедра или должность<input id="pDept" placeholder="Например, кафедра высшей математики" value="'+v('dept')+'"></label>'+
-  '<div><div class="vsec">Разбалловка</div><textarea id="pGrades" rows="3" placeholder="Баллы и оценка, по одной строке\nНапример: 50 - 3\n86 - 4">'+esc(gradeText(TEACHER_GRADES[gradeKey(r?r.name:name||'')]||[]))+'</textarea><div class="sub" style="margin-top:5px">Укажите свои пороги: число баллов, тире и оценка. Каждая строка — отдельная оценка.</div></div>'+
+  '<div><div class="vsec">Разбалловка</div><div id="pGradeRows" class="gradeedit"></div><button class="btn sm" type="button" data-a="gradeAdd" style="margin-top:8px">＋ Добавить оценку</button><div class="sub" style="margin-top:5px">Укажите баллы и выберите оценку для каждой строки.</div></div>'+
   '<div><div class="vsec">Дисциплины преподавателя</div><div class="pills" id="pSubs"></div><div class="sub" style="margin-top:6px">Дисциплины из занятий добавляются сами, здесь можно добавить остальные.</div></div>'+
   '<div class="r2"><label>Почта<input id="pMail" type="email" inputmode="email" value="'+v('email')+'"></label><label>Телефон<input id="pPhone" type="tel" value="'+v('phone')+'"></label></div>'+
   '<label>Кабинет<input id="pRoom" placeholder="Например, 8-520" value="'+v('room')+'"></label>'+
   '<div><div class="vsec">Консультации, пересдачи, приём</div><div id="consL" style="display:grid;gap:10px"></div><button class="btn sm" data-a="addCons" style="margin-top:8px">Добавить строку</button></div>'+
   '<label>Примечание к приёму<textarea id="pCons" style="min-height:60px" placeholder="Например, писать за день до встречи">'+v('consult')+'</textarea></label>'+
   '<label>Заметки<textarea id="pNotes" style="min-height:60px" placeholder="Как лучше связаться, особенности приёма">'+v('notes')+'</textarea></label>';
-  drawPills();drawCons();
+  gradeEditRows=(TEACHER_GRADES[gradeKey(r?r.name:name||'')]||[]).map(function(x){return {points:String(x.points),grade:String(x.grade)}});
+  drawPills();drawCons();drawGradeEditor();
   $('dTeachF').innerHTML=(r?'<button class="btn dng" data-a="delTeach" style="margin-right:auto">Удалить</button>':'')+'<button class="btn" data-a="close" data-t="dTeach">Отмена</button><button class="btn pri" data-a="saveTeach">Сохранить</button>';
   $('dTeach').showModal();
 }
 async function saveTeach(){
   var name=$('pName').value.trim();
   if(!name){$('pName').focus();toast('Введите ФИО');return}
+  var grades=collectGradeRows();if(grades===null)return;
   var row={name:name,dept:$('pDept').value.trim(),email:$('pMail').value.trim(),phone:$('pPhone').value.trim(),room:$('pRoom').value.trim(),consult:$('pCons').value.trim(),notes:$('pNotes').value.trim(),subject_ids:tsel,consults:cons};
   try{
     var r=ui.editP?await sb.from('teachers').update(row).eq('id',ui.editP):await sb.from('teachers').insert(row);
     if(r.error)throw r.error;
-    saveTeacherGrades(name,$('pGrades').value);
+    saveTeacherGrades(name,grades);
     $('dTeach').close();await load();render();toast('Сохранено');
   }catch(e){toast('Ошибка: '+(e.message||e))}
 }
@@ -1977,7 +2002,7 @@ document.addEventListener('click',function(e){
   if(a==='editTask'&&!ADMIN){openView(id);return}
   if(a==='editEv'&&!ADMIN){openEvView(id);return}
   if(a==='toggleV'){t=S.tasks.find(function(x){return x.id===id});t.done=!t.done;if(t.done)DONE[id]=1;else delete DONE[id];saveDone();$('dView').close();render();return}
-  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink|newTeach|editTeach|saveTeach|delTeach|addCons|rmCons|tsub|newEv|editEv|saveEv|delEv|rmEF)$/.test(a))return;
+  if(!ADMIN&&/^(newTask|editTask|newSub|editSub|saveTask|saveSub|delTask|delSub|newBook|editBook|saveBook|delBook|addLes|rmLes|newLink|editLink|saveLink|delLink|newTeach|editTeach|saveTeach|delTeach|gradeAdd|gradeRm|addCons|rmCons|tsub|newEv|editEv|saveEv|delEv|rmEF)$/.test(a))return;
   if(a==='sub'){if($('dDisc').open)$('dDisc').close();ui.sub=id;ui.q='';$('q').value='';ui.fx='casc';render()}
   else if(a==='tab'){var ot=TABORDER.indexOf(ui.tab);ui.tab=id==='mat'?(ui.lastMat||'books'):id;if(ui.tab==='books'||ui.tab==='links')ui.lastMat=ui.tab;var nt=TABORDER.indexOf(ui.tab);if(nt!==ot){ui.fx='slide';ui.dx=nt>ot?16:-16}else ui.fx='casc';render()}
   else if(a==='cmo'){ui.cal=new Date(ui.cal.getFullYear(),ui.cal.getMonth()+(+id),1);renderCal()}
@@ -2056,6 +2081,8 @@ document.addEventListener('click',function(e){
   else if(a==='soon'){$('dData').close();if(el.dataset.k==='task')openView(id);else openEvView(id)}
   else if(a==='evf'){ui.evf=id;ui.fx='casc';render()}
   else if(a==='tsub'){var ix=tsel.indexOf(id);if(ix<0)tsel.push(id);else tsel.splice(ix,1);drawPills()}
+  else if(a==='gradeAdd')addGradeRow();
+  else if(a==='gradeRm')removeGradeRow(+el.dataset.i);
   else if(a==='addCons'){cons.push({type:'Консультация',when:'all',day:'',from:'',to:'',weeks:'',date:'',room:'',note:''});drawCons()}
   else if(a==='rmCons'){cons.splice(+el.dataset.i,1);drawCons()}
   else if(a==='addLes'){les.push({type:'Лекция',day:0,from:'08:30',to:'10:05',week:'all',teacher:'',room:''});drawLes()}
