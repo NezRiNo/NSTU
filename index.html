@@ -178,6 +178,7 @@ dialog{max-height:94dvh}.db{max-height:calc(94dvh - 140px)}
 .tcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--sh);border-left:5px solid var(--c);min-width:0}
 .av{width:40px;height:40px;border-radius:50%;background:color-mix(in srgb,var(--c) 20%,transparent);display:grid;place-items:center;font-weight:700;flex:none}
 .trow{font-size:14px;margin-top:8px;overflow-wrap:anywhere}.trow small{display:block;color:var(--mut);font-size:12px}.trow a{color:var(--acc)}
+.gradebox{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:13px}.gradehead{color:var(--mut);font-size:12px;margin-bottom:5px}.graderows{display:flex;flex-wrap:wrap;gap:5px}.gradeitem{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);white-space:nowrap}.gradeitem b{font-weight:650}.gradeempty{color:var(--mut);font-size:12px}
 @media (max-width:820px){.srow .seg button{font-size:13px;padding:9px 4px;white-space:nowrap}}
 #dTeach{width:min(680px,94vw)}
 .pills{display:flex;flex-wrap:wrap;gap:8px}
@@ -781,6 +782,28 @@ async function delLink(el){
 }
 
 /* ---------- преподаватели ---------- */
+var TEACHER_GRADES={};
+try{TEACHER_GRADES=JSON.parse(localStorage.getItem('uchyoba-teacher-grades')||'{}')||{}}catch(e){TEACHER_GRADES={}}
+function gradeKey(name){return nk(name)}
+function parseGradeLines(text){
+  return String(text||'').split(/\n/).map(function(line){
+    var m=line.trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:-|–|—|:)\s*(.+)$/);
+    if(!m)return null;
+    var pts=Number(m[1].replace(',','.')),grade=m[2].trim();
+    if(!Number.isFinite(pts)||pts<0||!grade)return null;
+    return {points:pts,grade:grade};
+  }).filter(Boolean).sort(function(a,b){return a.points-b.points});
+}
+function gradeText(rows){return (rows||[]).map(function(x){return x.points+' - '+x.grade}).join('\n')}
+function saveTeacherGrades(name,text){
+  var key=gradeKey(name),rows=parseGradeLines(text);
+  if(rows.length)TEACHER_GRADES[key]=rows;else delete TEACHER_GRADES[key];
+  try{localStorage.setItem('uchyoba-teacher-grades',JSON.stringify(TEACHER_GRADES))}catch(e){}
+}
+function teacherGradeBlock(name){
+  var rows=TEACHER_GRADES[gradeKey(name)]||[];
+  return '<div class="gradebox"><div class="gradehead">Разбалловка</div>'+(rows.length?'<div class="graderows">'+rows.map(function(x){return '<span class="gradeitem">'+esc(x.points)+' баллов <b>→ '+esc(x.grade)+'</b></span>'}).join('')+'</div>':'<div class="gradeempty">Не указана</div>')+'</div>';
+}
 function nk(n){return String(n).toLowerCase().replace(/[.,]/g,' ').replace(/\s+/g,' ').trim()}
 function teacherList(){
   var map={};
@@ -802,7 +825,7 @@ function teacherH(o){
   var chips=keys.map(function(k){var x=o.subs[k];return '<span class="chip" style="--c:'+x.s.color+'">'+esc(x.s.name)+(x.types.length?': '+esc(x.types.join(', ').toLowerCase()):'')+'</span>'}).join(' ');
   var row=function(t,v){return v?'<div class="trow"><small>'+t+'</small>'+v+'</div>':''};
   return '<div class="tcard" style="--c:'+c+'"><div style="display:flex;gap:12px;align-items:center"><div class="av">'+esc(ini)+'</div><div style="min-width:0"><div class="lt">'+esc(o.name)+'</div>'+(r.dept?'<div class="ld">'+esc(r.dept)+'</div>':'')+'</div></div>'+(chips?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+chips+'</div>':'')+
-  row('Консультации и пересдачи',consBlock(r))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+
+  row('Консультации и пересдачи',consBlock(r))+row('Кабинет',esc(r.room||''))+row('Почта',r.email?'<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a>':'')+row('Телефон',r.phone?'<a href="tel:'+esc(r.phone.replace(/[^\d+]/g,''))+'">'+esc(r.phone)+'</a>':'')+(r.notes?'<div class="trow" style="color:var(--mut)">'+esc(r.notes)+'</div>':'')+teacherGradeBlock(o.name)+
   '<div style="margin-top:10px"><button class="btn sm adm" data-a="editTeach" data-id="'+(o.rec?o.rec.id:'')+'" data-n="'+esc(o.name)+'">'+(o.rec?'Изменить':'Дополнить данные')+'</button></div></div>';
 }
 function renderTeachers(){
@@ -859,6 +882,7 @@ function openTeach(id,name){
   $('dTeachH').textContent=r?'Данные преподавателя':'Преподаватель';
   $('dTeachB').innerHTML='<label>ФИО<input id="pName" placeholder="Иванова Е. П." value="'+(r?esc(r.name):esc(name||''))+'"></label><div class="sub">Пишите ФИО так же, как в занятиях, тогда карточка свяжется с дисциплинами. Публикуйте только рабочие контакты.</div>'+
   '<label>Кафедра или должность<input id="pDept" placeholder="Например, кафедра высшей математики" value="'+v('dept')+'"></label>'+
+  '<div><div class="vsec">Разбалловка</div><textarea id="pGrades" rows="3" placeholder="Баллы и оценка, по одной строке\nНапример: 50 - 3\n86 - 4">'+esc(gradeText(TEACHER_GRADES[gradeKey(r?r.name:name||'')]||[]))+'</textarea><div class="sub" style="margin-top:5px">Укажите свои пороги: число баллов, тире и оценка. Каждая строка — отдельная оценка.</div></div>'+
   '<div><div class="vsec">Дисциплины преподавателя</div><div class="pills" id="pSubs"></div><div class="sub" style="margin-top:6px">Дисциплины из занятий добавляются сами, здесь можно добавить остальные.</div></div>'+
   '<div class="r2"><label>Почта<input id="pMail" type="email" inputmode="email" value="'+v('email')+'"></label><label>Телефон<input id="pPhone" type="tel" value="'+v('phone')+'"></label></div>'+
   '<label>Кабинет<input id="pRoom" placeholder="Например, 8-520" value="'+v('room')+'"></label>'+
@@ -876,6 +900,7 @@ async function saveTeach(){
   try{
     var r=ui.editP?await sb.from('teachers').update(row).eq('id',ui.editP):await sb.from('teachers').insert(row);
     if(r.error)throw r.error;
+    saveTeacherGrades(name,$('pGrades').value);
     $('dTeach').close();await load();render();toast('Сохранено');
   }catch(e){toast('Ошибка: '+(e.message||e))}
 }
